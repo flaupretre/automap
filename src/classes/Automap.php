@@ -416,7 +416,7 @@ self::get_symbol($type,$symbol,true,false);
 private static function get_symbol($type,$symbol,$autoload=false
 	,$exception=false)
 {
-echo "get_symbol(".self::get_type_string($type).",$symbol)\n";//TRACE
+//echo "get_symbol(".self::get_type_string($type).",$symbol)\n";//TRACE
 
 if (!$autoload)
 	{
