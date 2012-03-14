@@ -32,6 +32,12 @@
 require_once(dirname(__FILE__).'/Automap.php');
 // </PLAIN_FILE> //---------------
 
+if (!defined('T_NAMESPACE'))	// For PHP < 5.3.0
+	{
+	define('T_NAMESPACE',-2);
+	define('T_NS_SEPARATOR',-3);
+	}
+
 if (!class_exists('Automap_Creator',false)) 
 {
 //------------------------------------------
@@ -231,6 +237,17 @@ if (count($f_failed))
 	}
 }
 
+//--
+
+private static function combine_ns_symbol($ns,$symbol)
+{
+$ns=trim($ns,'\\');
+$symbol=trim($symbol,'\\');
+
+if (strpos($symbol,'\\')!==false) return $symbol;
+else return $ns.(($ns==='') ? '' : '\\').$symbol;
+}
+
 //---------
 //-- This function extracts the function, class, and constant names out of a
 //-- PHP script.
@@ -245,6 +262,7 @@ const ST_CLASS_FOUND=Automap::T_CLASS;	// Found 'class'. Looking for name
 const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
 const ST_DEFINE_2=7;				// Found '('. Looking for constant name
 const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
+const ST_NAMESPACE_FOUND=9;			// Found 'namespace'. Looking for name
 
 const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
 
@@ -274,7 +292,7 @@ $skip_blocks=false;
 $exclude_list=array();
 $regs=false;
 $line_nb=0;
-
+echo "$file\n";
 try {
 foreach(file($file) as $line)
 	{
@@ -316,6 +334,8 @@ foreach(file($file) as $line)
 
 $block_level=0;
 $state=self::ST_OUT;
+$name='';
+$ns='';
 
 foreach(token_get_all($buf) as $token)
 	{
@@ -330,7 +350,7 @@ foreach(token_get_all($buf) as $token)
 		list($tnum,$tvalue)=$token;
 		$tname=token_name($tnum);
 		}
-
+		
 	if ($tnum==T_WHITESPACE || $tnum==T_COMMENT) continue;
 
 	//echo "$tname <$tvalue>\n";//TRACE
@@ -340,12 +360,21 @@ foreach(token_get_all($buf) as $token)
 			switch($tnum)
 				{
 				case T_FUNCTION:
-					$state=self::ST_FUNCTION_FOUND; break;
+					$state=self::ST_FUNCTION_FOUND;
+					$name='';
+					break;
 				case T_CLASS:
 				case T_INTERFACE:
-					$state=self::ST_CLASS_FOUND; break;
+					$state=self::ST_CLASS_FOUND;
+					$name='';
+					break;
+				case T_NAMESPACE:
+					$state=self::ST_NAMESPACE_FOUND;
+					$name='';
+					break;
 				case T_STRING:
 					if ($tvalue=='define') $state=self::ST_DEFINE_FOUND;
+					$name='';
 					break;
 				// If this flag is set, we skip anything enclosed
 				// between {} chars, ignoring any conditional block.
@@ -359,14 +388,38 @@ foreach(token_get_all($buf) as $token)
 				}
 			break;
 
+		case self::ST_NAMESPACE_FOUND:
+			switch($tnum)
+				{
+				case T_STRING:
+					$name .=$tvalue;
+					break;
+				case T_NS_SEPARATOR:
+					$name .= '\\';
+					break;
+				default:
+					$ns=$name;
+					$state=self::ST_OUT;
+				}
+			break;
+			
+
 		case self::ST_FUNCTION_FOUND:
 		case self::ST_CLASS_FOUND:
 			if ($tnum==-1 && $tvalue=='&') break; //-- Function returning ref
-			if ($tnum==T_STRING)
-				$this->add_entry($state,$tvalue,$value,$exclude_list);
-			else trigger_error($file.": Cannot get name (type=$tname;value=$tvalue)"					,E_USER_WARNING);
-			$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-			$block_level=0;
+			switch($tnum)
+				{
+				case T_STRING:
+					$name .=$tvalue;
+					break;
+				case T_NS_SEPARATOR:
+					$name .= '\\';
+					break;
+				default:
+					$this->add_entry($state,self::combine_ns_symbol($ns,$name),$value,$exclude_list);
+					$state=self::ST_SKIPPING_BLOCK_NOSTRING;
+					$block_level=0;
+				}
 			break;
 
 		case self::ST_SKIPPING_BLOCK_STRING:
@@ -406,15 +459,16 @@ foreach(token_get_all($buf) as $token)
 			break;
 
 		case self::ST_DEFINE_2:
-			// Accept T_STRING, even if it is incorrect
-			if ($tnum==T_CONSTANT_ENCAPSED_STRING || $tnum==T_STRING)
+			// Remember: T_STRING is incorrect in 'define' as constant name
+			if ($tnum==T_CONSTANT_ENCAPSED_STRING)
 				{
 				$schar=$tvalue{0};
 				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
-				$this->add_entry(Automap::T_CONSTANT,$tvalue,$value,$exclude_list);
+				$this->add_entry(Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue)
+					,$value,$exclude_list);
 				}
 			else trigger_error('Unrecognized token for constant definition '
-				."(type=$tname;value=$tvalue). Waited for string constant"
+				."(type=$tname;value=$tvalue). Waited for quoted string constant"
 				,E_USER_WARNING);
 			$state=self::ST_SKIPPING_TO_EOL;
 			break;
