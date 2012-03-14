@@ -202,11 +202,11 @@ echo "INFO: Scanning directory : $ext_dir\n";
 //-- Loop until everything is loaded or we cannot load anything more
 
 $f_to_load=array();
-$pattern='\.'.PHP_SHLIB_SUFFIX.'$';
+$pattern='/\.'.PHP_SHLIB_SUFFIX.'$/';
 foreach(scandir($ext_dir) as $ext_file)
 	{
 	if (is_dir($ext_dir.DIRECTORY_SEPARATOR.$ext_file)) continue;
-	if (ereg($pattern,$ext_file)!==false) $f_to_load[]=$ext_file;
+	if (preg_match($pattern,$ext_file)) $f_to_load[]=$ext_file;
 	}
 
 while(true)
@@ -246,7 +246,7 @@ const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
 const ST_DEFINE_2=7;				// Found '('. Looking for constant name
 const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
 
-const AUTOMAP_COMMENT='// *<Automap>:([^ ]+)(.*)$';
+const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
 
 //--
 
@@ -281,7 +281,7 @@ foreach(file($file) as $line)
 	$line_nb++;
 	$line=trim($line);
 	$lin=str_replace('	',' ',$line);	// Replace tabs with spaces
-	if (ereg(self::AUTOMAP_COMMENT,$line,$regs)===false) continue;
+	if (!preg_match(self::AUTOMAP_COMMENT,$line,$regs)) continue;
 
 	if ($regs[1]=='no-auto-index') return;
 
