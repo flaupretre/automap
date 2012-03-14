@@ -1,0 +1,90 @@
+
+DOC_TYPES=api xref
+
+.PHONY: all clean install kit doc
+
+all: $(TARGETS)
+
+doc:
+	@for type in $(DOC_TYPES); do \
+		if [ -f $(PRODUCT)_$$type.psf ] ; then \
+			$(MAKE) $(PRODUCT)_$$type.phk; \
+		fi ;\
+	done;
+
+clean:
+	@if [ -d tests ]; then $(MAKE) -C tests $@ PRODUCT=$(PRODUCT)_tests \
+		TARGETS=test.phk ; fi
+	/bin/rm -rf $(TARGETS) tmp_source tmp_modified
+	for type in $(DOC_TYPES); do \
+		/bin/rm -f $(PRODUCT)_$$type.phk;\
+	done
+	if [ -n  $(KIT_NAME) ] ; then /bin/rm -f $(KIT_FILE) ; fi
+	
+install: all
+	chmod +r $(TARGETS)
+	cp $(TARGETS) $(INSTDIR)
+	if [ -n "$(KIT_NAME)" -a -f "$(KIT_FILE)" ] ; then \
+			chmod +r $(KIT_FILE); \
+			cp $(KIT_FILE) $(INSTDIR); \
+		fi
+	for type in $(DOC_TYPES); do \
+		if [ -f $(PRODUCT)_$$type.phk ] ; then \
+			chmod +r $(PRODUCT)_$$type.phk; \
+			cp $(PRODUCT)_$$type.phk $(INSTDIR); \
+		fi ;\
+	done;
+
+#-----
+
+%.phk: %.psf
+	@if [ -d tests ]; then $(MAKE) -C tests PRODUCT=$(PRODUCT)_tests \
+		TARGETS=test.phk ; fi
+	if [ -z "$(NO_FILTER)" ] ; then \
+		$(FILTER) tmp_source $(FILTER_SOURCE) ;\
+		if [ -d modified ] ; then $(FILTER) tmp_modified modified ;\
+		else mkdir tmp_modified ; fi ;\
+	fi
+	SOURCE_DIR=$(SOURCE_DIR) $(PHP) $(PHK_CREATOR) build $@ $<
+	[ -n "$(KEEP_TMP)" ] || /bin/rm -rf tmp_source tmp_modified
+
+#------ Building kit
+
+KIT_FILE=$(KIT_NAME).tar.gz
+
+kit:
+	if [ -n "$(KIT_NAME)" ] ; then \
+		$(MAKE) clean ; \
+		tar cf - . | gzip --best >../$(KIT_FILE) ; \
+		mv ../$(KIT_FILE) . ; \
+	fi
+
+#------ API Documentation
+
+$(PRODUCT)_api.phk: $(PRODUCT)_api.psf
+	/bin/rm -rf $(TMP_DIR)
+	mkdir $(TMP_DIR)
+	$(PHPDOC) -o HTML:frames:DOM/earthli -d $(FILTER_SOURCE) \
+		-t $(TMP_DIR) -ti "$(PRODUCT) API"
+	SOURCE_DIR=$(SOURCE_DIR) TMP_DIR=$(TMP_DIR) $(PHP) $(PHK_CREATOR) build $@ $(PRODUCT)_api.psf
+	/bin/rm -rf $(TMP_DIR)
+
+$(PRODUCT)_api.pdf: $(PRODUCT)_api.psf
+	/bin/rm -rf $(TMP_DIR)
+	mkdir $(TMP_DIR)
+	$(PHPDOC) -o PDF:default:default -d $(FILTER_SOURCE) \
+		-t $(TMP_DIR) -ti "$(PRODUCT) Cross Reference"
+	mv $(TMP_DIR)/documentation.pdf $@
+	/bin/rm -rf $(TMP_DIR)
+
+#------ Cross Reference
+
+$(PRODUCT)_xref.phk: $(PRODUCT)_xref.psf $(PRODUCT)_xref.cfg
+	/bin/rm -rf $(TMP_DIR)
+	mkdir $(TMP_DIR)
+	PHPXREF_DIR=$(PHPXREF_DIR) INPUT=$(FILTER_SOURCE) OUTPUT=$(TMP_DIR) \
+		./xref.sh $(PRODUCT)_xref.cfg
+	SOURCE_DIR=$(SOURCE_DIR) TMP_DIR=$(TMP_DIR) $(PHP) $(PHK_CREATOR) build $@ $(PRODUCT)_xref.psf
+	/bin/rm -rf $(TMP_DIR)
+
+#-----------------------------------------------------------------------------
