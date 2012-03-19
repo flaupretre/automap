@@ -37,6 +37,7 @@ require_once(dirname(__FILE__).'/Automap.php');
 if (!defined('T_NAMESPACE')) define('T_NAMESPACE',-2);
 if (!defined('T_NS_SEPARATOR'))	define('T_NS_SEPARATOR',-3);
 if (!defined('T_CONST'))	define('T_CONST',-4);
+if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
 
 if (!class_exists('Automap_Creator',false)) 
 {
@@ -103,13 +104,9 @@ $this->options=$options;
 // Can be called with type/symbol or with type=null/symbol=key
 // Replace symbol even if previously defined
 
-private function add_entry($type,$symbol,$value,$exclude_list=null)
+private function add_entry($type,$symbol,$value)
 {
 $key=is_null($type) ? $symbol : Automap::key($type,$symbol);
-
-if ((!is_null($exclude_list)) && (array_search($key,$exclude_list)!==false))
-	return;
-
 $this->symbols[$key]=$value;
 }
 
@@ -192,6 +189,14 @@ foreach($ext->getClasses() as $class)
 	{
 	self::add_entry(Automap::T_CLASS,$class->getName(),$value);
 	}
+	
+if (method_exists($ext,'getTraits')) // Compatibility
+	{
+	foreach($ext->getTraits() as $trait)
+		{
+		self::add_entry(Automap::T_TRAIT,$trait->getName(),$value);
+		}
+	}
 }
 
 //---------
@@ -246,26 +251,6 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 }
 
 //---------
-//-- This function extracts the function, class, and constant names out of a
-//-- PHP script.
-
-//-- States :
-
-const ST_OUT=1;						// Upper level
-const ST_FUNCTION_FOUND=Automap::T_FUNCTION; // Found 'function'. Looking for name
-const ST_SKIPPING_BLOCK_NOSTRING=3; // In block, outside of string
-const ST_SKIPPING_BLOCK_STRING=4;	// In block, in string
-const ST_CLASS_FOUND=Automap::T_CLASS;	// Found 'class'. Looking for name
-const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
-const ST_DEFINE_2=7;				// Found '('. Looking for constant name
-const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
-const ST_NAMESPACE_FOUND=9;			// Found 'namespace'. Looking for <whitespace>
-const ST_NAMESPACE_2=10;			// Found 'namespace' and <whitespace>. Looking for name
-const ST_CONST_FOUND=11;			// Found 'const'. Looking for name
-
-const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
-
-//--
 
 public function register_script($file,$automap_path)
 {
@@ -280,6 +265,63 @@ $value=Automap::key(Automap::F_SCRIPT
 
 $this->cleanup($value);
 
+$symbols=array();
+
+try
+	{
+	$symbols=self::get_script_symbols(file_get_contents($file));
+	}
+catch (Exception $e)
+	{ throw new Exception("File $file ".$e->getMessage()); }
+
+foreach($symbols as $sa)
+	{
+	$this->add_entry($sa[0],$sa[1],$value);
+	}
+}
+
+//----
+
+private static function add_symbol(&$a,$type,$symbol,$exclude_list)
+{
+foreach($exclude_list as $e)
+	{
+	if (($e[0]===$type)&&($e[1]===$symbol)) return;
+	}
+
+$a[]=array($type,$symbol);
+}
+
+//---------
+//-- This function extracts the function, class, and constant names out of a
+//-- PHP script.
+
+//-- States :
+
+const ST_OUT=1;						// Upper level
+const ST_FUNCTION_FOUND=Automap::T_FUNCTION; // Found 'function'. Looking for name
+const ST_SKIPPING_BLOCK_NOSTRING=3; // In block, outside of string
+const ST_SKIPPING_BLOCK_STRING=4;	// In block, in string
+const ST_CLASS_FOUND=Automap::T_CLASS;	// Found 'class'. Looking for name
+const ST_TRAIT_FOUND=Automap::T_TRAIT;	// Found 'trait'. Looking for name
+const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
+const ST_DEFINE_2=7;				// Found '('. Looking for constant name
+const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
+const ST_NAMESPACE_FOUND=9;			// Found 'namespace'. Looking for <whitespace>
+const ST_NAMESPACE_2=10;			// Found 'namespace' and <whitespace>. Looking for name
+const ST_CONST_FOUND=11;			// Found 'const'. Looking for name
+
+const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
+
+//----
+
+public static function get_script_symbols($buf)
+{
+$buf=str_replace("\r",'',$buf);
+
+$symbols=array();
+$exclude_list=array();
+
 // Register explicit declarations
 //Format:
 //	<double-slash> <Automap>:declare <type> <value>
@@ -293,33 +335,32 @@ $regs=false;
 $line_nb=0;
 
 try {
-foreach(file($file) as $line)
+foreach(explode("\n",$buf) as $line)
 	{
 	$line_nb++;
 	$line=trim($line);
 	$lin=str_replace('	',' ',$line);	// Replace tabs with spaces
 	if (!preg_match(self::AUTOMAP_COMMENT,$line,$regs)) continue;
 
-	if ($regs[1]=='no-auto-index') return;
+	if ($regs[1]=='no-auto-index') return array();
 
 	if ($regs[1]=='skip-blocks')
 		{
 		$skip_blocks=true;
 		continue;
 		}
-	$type=strtolower(strtok($regs[2],' '));
+	$type_string=strtolower(strtok($regs[2],' '));
 	$name=strtok(' ');
-	if ($type===false || $name===false) throw new Exception('Needs 2 args');
-	$type_letter=Automap::string_to_type($type);
-	$key=Automap::key($type_letter,$name);
+	if ($type_string===false || $name===false) throw new Exception('Needs 2 args');
+	$type=Automap::string_to_type($type_string);
 	switch($regs[1])
 		{
 		case 'declare': // Add entry, even if set to be 'ignored'.
-			$this->add_entry(null,$key,$value);
+			self::add_symbol($symbols,$type,$name,array());
 			break;
 
 		case 'ignore': // Ignore this symbol in autoindex stage.
-			$exclude_list[]=$key;
+			$exclude_list[]=array($type,$name);
 			break;
 
 		default:
@@ -327,7 +368,7 @@ foreach(file($file) as $line)
 		}
 	}
 } catch (Exception $e)
-	{ throw new Exception("$file (line $line_nb): ".$e->getMessage()); }
+	{ throw new Exception("(line $line_nb): ".$e->getMessage()); }
 
 //-- Auto index
 
@@ -365,6 +406,9 @@ foreach(token_get_all($buf) as $token)
 				case T_CLASS:
 				case T_INTERFACE:
 					$state=self::ST_CLASS_FOUND;
+					break;
+				case T_TRAIT:
+					$state=self::ST_TRAIT_FOUND;
 					break;
 				case T_NAMESPACE:
 					$state=self::ST_NAMESPACE_FOUND;
@@ -411,10 +455,11 @@ foreach(token_get_all($buf) as $token)
 
 		case self::ST_FUNCTION_FOUND:
 		case self::ST_CLASS_FOUND:
+		case self::ST_TRAIT_FOUND:
 			if ($tnum==-1 && $tvalue=='&') break; //-- Function returning ref
 			if ($tnum==T_STRING)
 				{
-				$this->add_entry($state,self::combine_ns_symbol($ns,$tvalue),$value,$exclude_list);
+				self::add_symbol($symbols,$state,self::combine_ns_symbol($ns,$tvalue),$exclude_list);
 				}
 			else trigger_error('Unrecognized token for class/function definition'
 				."(type=$tnum ($tname);value=$tvalue). String expected"
@@ -426,8 +471,8 @@ foreach(token_get_all($buf) as $token)
 		case self::ST_CONST_FOUND:
 			if ($tnum==T_STRING)
 				{
-				$this->add_entry(Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue)
-					,$value,$exclude_list);
+				self::add_symbol($symbols,Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue)
+					,$exclude_list);
 				}
 			else trigger_error('Unrecognized token for constant definition '
 				."(type=$tnum ($tname);value=$tvalue). String expected"
@@ -479,7 +524,7 @@ foreach(token_get_all($buf) as $token)
 				{
 				$schar=$tvalue{0};
 				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
-				$this->add_entry(Automap::T_CONSTANT,$tvalue,$value,$exclude_list);
+				self::add_symbol($symbols,Automap::T_CONSTANT,$tvalue,$exclude_list);
 				}
 			else trigger_error('Unrecognized token for constant definition '
 				."(type=$tnum ($tname);value=$tvalue). Expected quoted string constant"
@@ -492,11 +537,10 @@ foreach(token_get_all($buf) as $token)
 			break;
 		}
 	}
+return $symbols;
 }
 
 //---------
-// Here, we must use 'Automap' and not 'parent' because the package always
-// registers its map via Automap::mount()
 
 public function register_package($file,$automap_path)
 {
