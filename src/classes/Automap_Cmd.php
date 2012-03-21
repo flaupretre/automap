@@ -28,53 +28,51 @@
 //============================================================================
 
 // <PLAIN_FILE> //---------------
-require_once(dirname(__FILE__).'/../classes/Automap_Creator.php');
+require_once(dirname(__FILE__).'/Automap_Creator.php');
 // </PLAIN_FILE> //---------------
 
-//---------
-// <Automap>:ignore function send_error
-
-function send_error($msg,$usage=true)
+class Automap_Cmd
 {
-if ($usage) usage($msg);
-else echo "** ERROR: $msg\n";
-exit(1);
+//---------
+
+private static function error_abort($msg,$usage=true)
+{
+if ($usage) $msg .= " - Use 'help' command for syntax";
+throw new Exception($msg);
 }
 
 //---------
-// <Automap>:ignore function usage
 
-function usage($msg=null)
+private static function usage()
 {
-if (!is_null($msg)) echo "** ERROR: $msg\n";
-
-echo "\nUsage: <action> <params...>\n";
-echo "\nActions :\n\n";
+echo "\nUsage: <action> <params...>\n\n";
+echo "Actions :\n";
 echo "	- showmap <map file>\n";
-echo "	- register_extensions <map file> (must be executed with 'php -n -d extension_dir=<dir>'\n";
-echo "	- register_scripts <map file> <base dir> <relative file paths...>\n";
+echo "	- register_extensions <map file> (execute using 'php -n -d extension_dir=<dir>'\n";
+echo "	- register <map file> <base dir> <relative file paths...>\n";
 echo "	- export <map file> [output_file]\n";
 echo "	- import <map file> [source_file]\n";
 echo "	- help\n\n";
-
-exit(is_null($msg) ? 0 : 1);
 }
 
 //---------
 // Main
 
-ini_set('display_errors',true);
-
-try
+public static function run($args)
 {
-array_shift($_SERVER['argv']);
-$action=(count($_SERVER['argv'])) ? array_shift($_SERVER['argv']) : 'help';
-$mapfile=(array_key_exists(0,$_SERVER['argv'])) ? $_SERVER['argv'][0] : null;
+array_shift($args);
+$action=(count($args)) ? array_shift($args) : 'help';
+if (array_key_exists(0,$args))
+	{
+	$mapfile=$args[0];
+	array_shift($args);
+	}
+else $mapfile=null;
 
 switch($action)
 	{
 	case 'showmap': //-- display <map file>
-		if (is_null($mapfile)) send_error(null);
+		if (is_null($mapfile)) self::error_abort('No mapfile');
 		$mnt=Automap::mount($mapfile);
 		Automap::instance($mnt)->show();
 		break;
@@ -87,59 +85,53 @@ switch($action)
 		//-- it came from). The '-d' flag is mandatory as long as PHP cannot
 		//-- dl() outside of 'extension_dir'.
 
-		if (is_null($mapfile)) send_error(null);
+		if (is_null($mapfile)) self::error_abort('No mapfile');
 		$mf=new Automap_Creator();
 		$mf->register_extension_dir();
 		$mf->dump($mapfile);
 		break;
 
-	case 'register_scripts':
-		//-- register_scripts <map file> <$base> <script files (relative paths)>
+	case 'register':
+		//-- register <map file> <$base> <script files (relative paths)>
 
-		if (is_null($mapfile)) send_error(null);
-		array_shift($_SERVER['argv']);
-		$base=$_SERVER['argv'][0];
+		if (is_null($mapfile)) self::error_abort('No mapfile');
+		if (count($args)==0) self::error_abort('No base dir');
+		$base=$args[0];
 		$mf=new Automap_Creator();
 		if (file_exists($mapfile)) $mf->get_mapfile($mapfile);
-
-		array_shift($_SERVER['argv']);
-		foreach($_SERVER['argv'] as $rfile)
+		array_shift($args);
+		if (count($args)==0) $args=array('.');
+		foreach($args as $rpath)
 			{
-			$abs_path=$base.DIRECTORY_SEPARATOR.$rfile;
-			$a=glob($abs_path);
-			if (count($a)==0) throw new Exception($abs_path.': No such file');
-			foreach($a as $afile) $mf->register_script($afile,$rfile);
+			$abs_path=$base.DIRECTORY_SEPARATOR.$rpath;
+			$mf->register_path($abs_path,$rpath);
 			}
 		$mf->dump($mapfile);
 		break;
 
-	case 'export': //-- export [<map file>]
-		if (is_null($mapfile)) send_error(null);
-		$output=isset($_SERVER['argv'][1]) ? $_SERVER['argv'][1] : null;
+	case 'export': //-- export <map file>
+		if (is_null($mapfile)) self::error_abort('No mapfile');
+		$output=isset($args[1]) ? $args[1] : null;
 		Automap::instance(Automap::mount($mapfile))->export($output);
 		break;
 
 	case 'import': //-- import <map file>
-		if (is_null($mapfile)) send_error(null);
+		if (is_null($mapfile)) self::error_abort('No mapfile');
 		$mf=new Automap_Creator();
-		array_shift($_SERVER['argv']);
-		foreach($_SERVER['argv'] as $rfile) $mf->import($rfile);
+		if (file_exists($mapfile)) $mf->get_mapfile($mapfile);
+		foreach($args as $rfile) $mf->import($rfile);
 		$mf->dump($mapfile);
 		break;
 
 	case 'help':
-		usage();
+		self::usage();
 		break;
 
 	default:
-		send_error("Unknown action: '$action'");
+		self::error_abort("Unknown action: '$action'");
 	}
 }
-catch(Exception $e)
-	{
-	if (getenv('AUTOMAP_DEBUG')!==false) throw $e;
-	else send_error($e->getMessage(),false);
-	}
 
 //============================================================================
+} // End of class
 ?>
