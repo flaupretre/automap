@@ -190,11 +190,19 @@ foreach($ext->getClasses() as $class)
 	self::add_entry(Automap::T_CLASS,$class->getName(),$value);
 	}
 	
+if (method_exists($ext,'getInterfaces')) // Compatibility
+	{
+	foreach($ext->getInterfaces() as $interface)
+		{
+		self::add_entry(Automap::T_CLASS,$interface->getName(),$value);
+		}
+	}
+
 if (method_exists($ext,'getTraits')) // Compatibility
 	{
 	foreach($ext->getTraits() as $trait)
 		{
-		self::add_entry(Automap::T_TRAIT,$trait->getName(),$value);
+		self::add_entry(Automap::T_CLASS,$trait->getName(),$value);
 		}
 	}
 }
@@ -252,16 +260,29 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 
 //---------
 
-public function register_script($file,$automap_path)
+private static function normalize_rpath($rpath)
 {
-//echo "INFO: Registering script $file as $automap_path\n";//TRACE
+return trim(str_replace('\\','/',$rpath),'/\\');
+}
 
-if (($buf=php_strip_whitespace($file))==='') return;
+//---------
+
+private static function combine_path($dpath,$fpath)
+{
+return $dpath.(($dpath==='') ? '' : '/').$fpath;
+}
+
+//---------
+
+public function register_script($fpath,$rpath)
+{
+//echo "INFO: Registering script $fpath as $rpath\n";//TRACE
+
+if (($buf=php_strip_whitespace($fpath))==='') return;
 
 // Force relative path
 
-$value=Automap::key(Automap::F_SCRIPT
-	,trim(str_replace('\\','/',$automap_path),'/\\'));
+$value=Automap::key(Automap::F_SCRIPT,self::normalize_rpath($rpath));
 
 $this->cleanup($value);
 
@@ -269,10 +290,10 @@ $symbols=array();
 
 try
 	{
-	$symbols=self::get_script_symbols(file_get_contents($file));
+	$symbols=self::get_script_symbols(file_get_contents($fpath),$fpath);
 	}
 catch (Exception $e)
-	{ throw new Exception("File $file ".$e->getMessage()); }
+	{ throw new Exception("File $fpath ".$e->getMessage()); }
 
 foreach($symbols as $sa)
 	{
@@ -303,7 +324,6 @@ const ST_FUNCTION_FOUND=Automap::T_FUNCTION; // Found 'function'. Looking for na
 const ST_SKIPPING_BLOCK_NOSTRING=3; // In block, outside of string
 const ST_SKIPPING_BLOCK_STRING=4;	// In block, in string
 const ST_CLASS_FOUND=Automap::T_CLASS;	// Found 'class'. Looking for name
-const ST_TRAIT_FOUND=Automap::T_TRAIT;	// Found 'trait'. Looking for name
 const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
 const ST_DEFINE_2=7;				// Found '('. Looking for constant name
 const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
@@ -315,9 +335,10 @@ const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
 
 //----
 
-public static function get_script_symbols($buf)
+public static function get_script_symbols($buf,$path=null)
 {
 $buf=str_replace("\r",'',$buf);
+$prefix=(is_null($path) ? '' : $path.' : ');
 
 $symbols=array();
 $exclude_list=array();
@@ -405,10 +426,8 @@ foreach(token_get_all($buf) as $token)
 					break;
 				case T_CLASS:
 				case T_INTERFACE:
-					$state=self::ST_CLASS_FOUND;
-					break;
 				case T_TRAIT:
-					$state=self::ST_TRAIT_FOUND;
+					$state=self::ST_CLASS_FOUND;
 					break;
 				case T_NAMESPACE:
 					$state=self::ST_NAMESPACE_FOUND;
@@ -454,16 +473,27 @@ foreach(token_get_all($buf) as $token)
 			
 
 		case self::ST_FUNCTION_FOUND:
+			if (($state==self::ST_FUNCTION_FOUND)&&($tnum==-1)&&($tvalue=='('))
+				{ // Closure : Ignore (no function name to get here)
+				$state=self::ST_OUT;
+				break;
+				}
+			 //-- Function returning ref: keep looking for name
+			 if ($tnum==-1 && $tvalue=='&') break;
+			// No break here !
 		case self::ST_CLASS_FOUND:
-		case self::ST_TRAIT_FOUND:
-			if ($tnum==-1 && $tvalue=='&') break; //-- Function returning ref
 			if ($tnum==T_STRING)
 				{
 				self::add_symbol($symbols,$state,self::combine_ns_symbol($ns,$tvalue),$exclude_list);
 				}
-			else trigger_error('Unrecognized token for class/function definition'
-				."(type=$tnum ($tname);value=$tvalue). String expected"
+			else
+				{
+				trigger_error($prefix.'Unrecognized token for class/function definition'
+				."(type=$tnum ($tname);value='$tvalue'). String expected"
 					,E_USER_WARNING);
+				$state=self::ST_OUT;
+				break;
+				}
 			$state=self::ST_SKIPPING_BLOCK_NOSTRING;
 			$block_level=0;
 			break;
@@ -474,8 +504,8 @@ foreach(token_get_all($buf) as $token)
 				self::add_symbol($symbols,Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue)
 					,$exclude_list);
 				}
-			else trigger_error('Unrecognized token for constant definition '
-				."(type=$tnum ($tname);value=$tvalue). String expected"
+			else trigger_error($prefix.'Unrecognized token for constant definition '
+				."(type=$tnum ($tname);value='$tvalue'). String expected"
 					,E_USER_WARNING);
 			$state=self::ST_OUT;
 			break;
@@ -510,8 +540,8 @@ foreach(token_get_all($buf) as $token)
 			if ($tnum==-1 && $tvalue=='(') $state=self::ST_DEFINE_2;
 			else
 				{
-				trigger_error('Unrecognized token for constant definition '
-					."(type=$tnum ($tname);value=$tvalue). Expected '('"
+				trigger_error($prefix.'Unrecognized token for constant definition '
+					."(type=$tnum ($tname);value='$tvalue'). Expected '('"
 					,E_USER_WARNING);
 				$state=self::ST_SKIPPING_TO_EOL;
 				}
@@ -526,8 +556,8 @@ foreach(token_get_all($buf) as $token)
 				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
 				self::add_symbol($symbols,Automap::T_CONSTANT,$tvalue,$exclude_list);
 				}
-			else trigger_error('Unrecognized token for constant definition '
-				."(type=$tnum ($tname);value=$tvalue). Expected quoted string constant"
+			else trigger_error($prefix.'Unrecognized token for constant definition '
+				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant"
 				,E_USER_WARNING);
 			$state=self::ST_SKIPPING_TO_EOL;
 			break;
@@ -542,13 +572,60 @@ return $symbols;
 
 //---------
 
-public function register_package($file,$automap_path)
+private function is_mapfile($path)
 {
-$value=Automap::key(Automap::F_PACKAGE,trim($automap_path,'/\\'));
+return (substr(file_get_contents($path),0,strlen(Automap::MAGIC))===Automap::MAGIC);
+}
+
+//---------
+
+public function register_path($fpath,$rpath)
+{
+switch($type=filetype($fpath))
+	{
+	case 'dir':
+		foreach(PHK_UTIL::scandir($fpath) as $entry)
+			{
+			$this->register_path(PHK_Util::combine_path($fpath,$entry)
+				,PHK_Util::combine_path($rpath,$entry));
+			}
+		break;
+
+	case 'file':
+		if (PHK::file_is_package($fpath))
+			{
+			$this->register_phk($fpath,$rpath);
+			}
+		else $this->register_script($fpath,$rpath);
+		break;
+
+	default:
+		echo "Ignoring file $fpath (type=$type)\n";
+	}
+}
+
+//---------
+
+public function register_map($fpath,$rpath)
+{
+$mnt=Automap::mount($fpath);
+$map=Automap::instance($mnt);
+foreach($map->symbols() as $key => $sympath)
+	{
+	$this->add_entry(null,$key,self::combine_path($rpath,$sympath));
+	}
+}
+
+//---------
+
+public function register_phk($fpath,$rpath)
+{
+$value=Automap::key(Automap::F_PACKAGE,self::normalize_rpath($rpath));
 
 // We use the same mount point for packages and automaps
 
-$mnt=require($file);
+$mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
+
 if (Automap::is_mounted($mnt)) // If package has an automap
 	{
 	foreach(array_keys(Automap::instance($mnt)->symbols()) as $key)

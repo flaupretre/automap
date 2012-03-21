@@ -50,7 +50,6 @@ const T_FUNCTION='F';
 const T_CONSTANT='C';
 const T_CLASS='L';
 const T_EXTENSION='E';
-const T_TRAIT='T';
 
 const F_SCRIPT='S';
 const F_EXTENSION='X';
@@ -61,7 +60,6 @@ private static $type_strings=array(
 	self::T_CONSTANT	=> 'constant',
 	self::T_CLASS		=> 'class',
 	self::T_EXTENSION	=> 'extension',
-	self::T_TRAIT		=> 'trait',
 	self::F_SCRIPT		=> 'script',
 	self::F_EXTENSION	=> 'extension file',
 	self::F_PACKAGE		=> 'package'
@@ -177,10 +175,9 @@ public static function key($type,$symbol)
 
 if (($type==self::T_EXTENSION)
 	||($type==self::T_FUNCTION)
-	||($type==self::T_CLASS)
-	||($type==self::T_TRAIT)) $symbol=strtolower($symbol);
+	||($type==self::T_CLASS)) $symbol=strtolower($symbol);
 
-return $type.$symbol;
+return $type.trim($symbol,'\\');
 }
 
 //---------
@@ -207,7 +204,8 @@ return substr($key,1,strcspn($key,'|',1));
 
 public static function get_type_string($type)
 {
-if (!isset(self::$type_strings[$type])) return $type;
+if (!isset(self::$type_strings[$type]))
+	throw new Exception("$type: Invalid type");
 
 return self::$type_strings[$type];
 }
@@ -336,12 +334,9 @@ if (self::is_mounted($mnt))
 	return $mnt;
 	}
 
-if (is_null($base_dir))
-	{
-	$base_dir=dirname($path);
-	if (($base_dir!=='/') && ($base_dir!=='\\'))
-		$base_dir .= DIRECTORY_SEPARATOR;
-	}
+if (is_null($base_dir)) $base_dir=dirname($path);
+if (($base_dir!=='/') && ($base_dir!=='\\'))
+	$base_dir = rtrim($base_dir,'\\/').DIRECTORY_SEPARATOR;
 
 self::$mount_order[]
 	=self::$automaps[$mnt]=new self($path,$base_dir,$mnt,$flags);
@@ -396,9 +391,8 @@ switch($type)
 		function_exists($symbol,false) : function_exists($symbol));
 
 	case self::T_CLASS:		return class_exists($symbol,false)
-								|| interface_exists($symbol,false);
-
-	case self::T_TRAIT:		return trait_exists($symbol,false);
+								|| interface_exists($symbol,false)
+								|| trait_exists($symbol,false);
 
 	case self::T_EXTENSION:	return extension_loaded($symbol);
 	}
@@ -455,9 +449,6 @@ public static function get_class($symbol)
 public static function get_extension($symbol)
 	{ return self::get_symbol(self::T_EXTENSION,$symbol,false,false); }
 
-public static function get_trait($symbol)
-	{ return self::get_symbol(self::T_TRAIT,$symbol,false,false); }
-
 //---------
 
 public static function require_function($symbol)
@@ -471,9 +462,6 @@ public static function require_class($symbol)
 
 public static function require_extension($symbol)
 	{ return self::get_symbol(self::T_EXTENSION,$symbol,false,true); }
-
-public static function require_trait($symbol)
-	{ return self::get_symbol(self::T_TRAIT,$symbol,false,true); }
 
 //=============== Instance (one per map) =================================
 // Automap instance
