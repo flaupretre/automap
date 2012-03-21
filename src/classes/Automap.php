@@ -40,7 +40,7 @@ if (!class_exists('Automap',false))
 
 class Automap
 {
-const VERSION='1.1.0';
+const VERSION='1.2.0';
 
 const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
 
