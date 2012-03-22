@@ -19,9 +19,7 @@
 
 ini_set('display_errors',true);
 
-// <PLAIN_FILE> //---------------
-require_once(dirname(__FILE__).'/../classes/Automap_Cmd.php');
-// </PLAIN_FILE> //---------------
+//require_once(dirname(__FILE__).'/../classes/Automap_Cmd.php');
 
 try
 {
