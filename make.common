@@ -15,6 +15,7 @@ doc:
 clean:
 	@if [ -d tests ]; then $(MAKE) -C tests $@ PRODUCT=$(PRODUCT)_tests \
 		TARGETS=test.phk ; fi
+	@if [ -d examples ]; then $(MAKE) -C examples $@ ; fi
 	/bin/rm -rf $(TARGETS) tmp_source tmp_modified
 	for type in $(DOC_TYPES); do \
 		/bin/rm -f $(PRODUCT)_$$type.phk;\

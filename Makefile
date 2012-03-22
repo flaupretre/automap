@@ -5,8 +5,9 @@ PRODUCT=Automap
 
 TARGETS = $(PRODUCT).phk
 
-NO_FILTER = true
+SOURCE_DIR = src
 
+NO_FILTER = true
 FILTER_SOURCE=$(SOURCE_DIR)
 
 include ./make.vars
