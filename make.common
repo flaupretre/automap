@@ -1,11 +1,18 @@
 
 DOC_TYPES=api xref
 
+KIT_FILE=$(KIT_NAME).tar.gz
+
+#------------------------------------------
+
 .PHONY: all clean install kit doc
 
 all: $(TARGETS)
 
 doc:
+	if [ -n "$(SUBDIRS)" ] ; then \
+		for i in $(SUBDIRS) ;	do $(MAKE) -C $$i $@ ; done ; \
+	fi
 	@for type in $(DOC_TYPES); do \
 		if [ -f $(PRODUCT)_$$type.psf ] ; then \
 			$(MAKE) $(PRODUCT)_$$type.phk; \
@@ -13,9 +20,11 @@ doc:
 	done;
 
 clean:
+	if [ -n "$(SUBDIRS)" ] ; then \
+		for i in $(SUBDIRS) ;	do $(MAKE) -C $$i $@ ; done ; \
+	fi
 	@if [ -d tests ]; then $(MAKE) -C tests $@ PRODUCT=$(PRODUCT)_tests \
 		TARGETS=test.phk ; fi
-	@if [ -d examples ]; then $(MAKE) -C examples $@ ; fi
 	/bin/rm -rf $(TARGETS) tmp_source tmp_modified
 	for type in $(DOC_TYPES); do \
 		/bin/rm -f $(PRODUCT)_$$type.phk;\
@@ -35,6 +44,9 @@ install: all
 			cp $(PRODUCT)_$$type.phk $(INSTDIR); \
 		fi ;\
 	done;
+	if [ -n "$(SUBDIRS)" ] ; then \
+		for i in $(SUBDIRS) ;	do $(MAKE) -C $$i $@ ; done ; \
+	fi
 
 #-----
 
