@@ -3,12 +3,6 @@
 
 merge -strip=true -compress=gzip / $(TMP_DIR)
 
-#-- The icons
-
-add /etc/& $(PSF_DIR)/src/etc/phk_signer.png
-add /etc/& $(PSF_DIR)/src/etc/license.htm
-add /etc/& $(PSF_DIR)/src/etc/license.txt
-
 #-- The options
 
 %options

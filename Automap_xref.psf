@@ -1,7 +1,7 @@
 
 #-- Documentation files
 
-merge -strip=true -compress=gzip / $(TMP_DIR)
+merge -compress=gzip / $(TMP_DIR)
 
 #-- The icons
 
@@ -21,7 +21,6 @@ return array(
 	'author' => 'F. Laupretre <mailto:phk@tekwire.net>',
 	'url' => 'http://phk.tekwire.net',
 	'packager' => 'F. Laupretre <mailto:phk@tekwire.net>',
-	'icon' => '/etc/phk_logo.png',
 	'license_prefix' => '/etc/license',
 	'web_run_script' => '/index.html',
 	'web_access' => '/',		//-- Open access
