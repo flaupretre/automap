@@ -47,12 +47,13 @@ private static function usage()
 {
 echo "\nUsage: <action> <params...>\n\n";
 echo "Actions :\n";
-echo "	- showmap <map file>\n";
-echo "	- register_extensions <map file> (execute using 'php -n -d extension_dir=<dir>'\n";
-echo "	- register <map file> <base dir> <relative file paths...>\n";
-echo "	- export <map file> [output_file]\n";
-echo "	- import <map file> [source_file]\n";
-echo "	- help\n\n";
+echo "    - show <map file>\n";
+echo "    - register_extensions <map file> (execute using 'php -n -d extension_dir=<dir>'\n";
+echo "    - register <map file> <base dir> <relative file paths...>\n";
+echo "    - merge <target map> <relative path> <source maps...>\n";
+echo "    - export <map file> [output_file]\n";
+echo "    - import <map file> [source_file]\n";
+echo "    - help\n\n";
 }
 
 //---------
@@ -71,7 +72,7 @@ else $mapfile=null;
 
 switch($action)
 	{
-	case 'showmap': //-- display <map file>
+	case 'show': //-- display <map file>
 		if (is_null($mapfile)) self::error_abort('No mapfile');
 		$mnt=Automap::mount($mapfile);
 		Automap::instance($mnt)->show();
@@ -105,6 +106,20 @@ switch($action)
 			{
 			$abs_path=$base.DIRECTORY_SEPARATOR.$rpath;
 			$mf->register_path($abs_path,$rpath);
+			}
+		$mf->dump($mapfile);
+		break;
+
+	case 'merge':
+		if (is_null($mapfile)) self::error_abort('No mapfile');
+		if (count($args)==0) self::error_abort('No relative path');
+		$rpath=$args[0];
+		$mf=new Automap_Creator();
+		if (file_exists($mapfile)) $mf->get_mapfile($mapfile);
+		array_shift($args);
+		foreach($args as $source_path)
+			{
+			$mf->merge_map($source_path,$rpath);
 			}
 		$mf->dump($mapfile);
 		break;
