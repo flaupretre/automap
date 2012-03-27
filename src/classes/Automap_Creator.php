@@ -45,8 +45,8 @@ if (!class_exists('Automap_Creator',false))
 
 class Automap_Creator
 {
-const VERSION='1.2.0';
-const MIN_VERSION='1.1.0'; // Minimum version of reader to understand the map
+const VERSION='2.0.0';
+const MIN_VERSION='2.0.0'; // Minimum version of runtime to understand the map
 
 //---------
 
@@ -102,12 +102,27 @@ $this->options=$options;
 
 //---------
 // Can be called with type/symbol or with type=null/symbol=key
-// Replace symbol even if previously defined
+// Replace key even if previously defined
 
-private function add_entry($type,$symbol,$value)
+private function add_entry($type,$symbol,$va)
 {
-$key=is_null($type) ? $symbol : Automap::key($type,$symbol);
-$this->symbols[$key]=$value;
+if (is_null($type))
+	{
+	$key=$symbol;
+	}
+else
+	{
+	$key=Automap::key($type,$symbol);
+	$va['n']=$symbol;
+	}
+$this->symbols[$key]=$va;
+}
+
+//---------
+
+private static function mk_varray($type,$path)
+{
+return array('t' => $type, 'p' => $path);
 }
 
 //---------
@@ -120,9 +135,15 @@ return count($this->symbols);
 //---------
 // Remove the entries contaning $value
 
-private function cleanup($value)
+private function cleanup($va)
 {
-foreach(array_keys($this->symbols,$value) as $key) unset($this->symbols[$key]);
+$type=$va['t'];
+$path=$va['p'];
+foreach(array_keys($this->symbols) as $key)
+	{
+	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
+		unset($this->symbols[$key]);
+	}
 }
 
 //---------
@@ -165,8 +186,8 @@ public function register_extension_file($file)
 {
 echo "INFO: Registering extension file: $file\n";
 
-$value=Automap::key(Automap::F_EXTENSION,$file); // Key & value = same format
-$this->cleanup($value);
+$va=self::mk_varray(Automap::F_EXTENSION,$file);
+$this->cleanup($va);
 
 $extension_list=get_loaded_extensions();
 
@@ -177,24 +198,24 @@ if (($ext_name=array_pop($a))===NULL)
 
 $ext=new ReflectionExtension($ext_name);
 
-self::add_entry(Automap::T_EXTENSION,$ext_name,$value);
+self::add_entry(Automap::T_EXTENSION,$ext_name,$va);
 
 foreach($ext->getFunctions() as $func)
-	self::add_entry(Automap::T_FUNCTION,$func->getName(),$value);
+	self::add_entry(Automap::T_FUNCTION,$func->getName(),$va);
 
 foreach(array_keys($ext->getConstants()) as $constant)
-	self::add_entry(Automap::T_CONSTANT,$constant,$value);
+	self::add_entry(Automap::T_CONSTANT,$constant,$va);
 
 foreach($ext->getClasses() as $class)
 	{
-	self::add_entry(Automap::T_CLASS,$class->getName(),$value);
+	self::add_entry(Automap::T_CLASS,$class->getName(),$va);
 	}
 	
 if (method_exists($ext,'getInterfaces')) // Compatibility
 	{
 	foreach($ext->getInterfaces() as $interface)
 		{
-		self::add_entry(Automap::T_CLASS,$interface->getName(),$value);
+		self::add_entry(Automap::T_CLASS,$interface->getName(),$va);
 		}
 	}
 
@@ -202,7 +223,7 @@ if (method_exists($ext,'getTraits')) // Compatibility
 	{
 	foreach($ext->getTraits() as $trait)
 		{
-		self::add_entry(Automap::T_CLASS,$trait->getName(),$value);
+		self::add_entry(Automap::T_CLASS,$trait->getName(),$va);
 		}
 	}
 }
@@ -254,7 +275,7 @@ if (count($f_failed))
 
 private static function combine_ns_symbol($ns,$symbol)
 {
-$ns=strtolower(trim($ns,'\\'));
+$ns=trim($ns,'\\');
 return $ns.(($ns==='') ? '' : '\\').$symbol;
 }
 
@@ -282,9 +303,8 @@ if (($buf=php_strip_whitespace($fpath))==='') return;
 
 // Force relative path
 
-$value=Automap::key(Automap::F_SCRIPT,self::normalize_rpath($rpath));
-
-$this->cleanup($value);
+$va=self::mk_varray(Automap::F_SCRIPT,self::normalize_rpath($rpath));
+$this->cleanup($va);
 
 $symbols=array();
 
@@ -297,7 +317,7 @@ catch (Exception $e)
 
 foreach($symbols as $sa)
 	{
-	$this->add_entry($sa[0],$sa[1],$value);
+	$this->add_entry($sa[0],$sa[1],$va);
 	}
 }
 
@@ -606,13 +626,14 @@ switch($type=filetype($fpath))
 
 //---------
 
-public function register_map($fpath,$rpath)
+public function merge_map($fpath,$rpath)
 {
 $mnt=Automap::mount($fpath);
 $map=Automap::instance($mnt);
-foreach($map->symbols() as $key => $sympath)
+foreach($map->symbols() as $key => $va)
 	{
-	$this->add_entry(null,$key,self::combine_path($rpath,$sympath));
+	$va['p']=self::combine_path($rpath,$va['p']);
+	$this->add_entry(null,$key,$va);
 	}
 }
 
@@ -620,7 +641,9 @@ foreach($map->symbols() as $key => $sympath)
 
 public function register_phk($fpath,$rpath)
 {
-$value=Automap::key(Automap::F_PACKAGE,self::normalize_rpath($rpath));
+$rpath=self::normalize_rpath($rpath);
+
+$this->cleanup(self::mk_varray(Automap::F_PACKAGE,$rpath));
 
 // We use the same mount point for packages and automaps
 
@@ -628,16 +651,18 @@ $mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
 
 if (Automap::is_mounted($mnt)) // If package has an automap
 	{
-	foreach(array_keys(Automap::instance($mnt)->symbols()) as $key)
+	foreach(Automap::instance($mnt)->symbols() as $key => $va)
 		{
 		//var_dump($key);//TRACE
-		$this->add_entry(null,$key,$value);
+		$va['t']=Automap::F_PACKAGE;
+		$va['p']=$rpath;
+		$this->add_entry(null,$key,$va);
 		}
 	}
-else echo "No automap found in package\n";
 }
 
 //---------
+//TODO: Redesign import/export
 
 public function import($path)
 {

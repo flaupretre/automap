@@ -40,7 +40,8 @@ if (!class_exists('Automap',false))
 
 class Automap
 {
-const VERSION='1.2.0';
+const VERSION='2.0.0';
+const MIN_MAP_VERSION='2.0.0'; // Cannot load maps older than this version
 
 const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
 
@@ -136,6 +137,13 @@ return sprintf('%s_%X_%X_%X',$prefix,$dev,$inode,$mtime);
 
 //================== Map manager (static methods) =======================
 
+public static function min_map_version()
+{
+return self::MIN_MAP_VERSION;
+}
+
+//--------------
+
 public static function init()	// Unpublished - Internal use only
 {
 self::$automaps=array();
@@ -168,16 +176,26 @@ self::$success_handlers[]=$callable;
 
 // Combines a type and a symbol in a 'key'. The resulting string can be used
 // as a key or a value with the appropriate prefix in an automap.
+// Note: Extension names are case insensitive
 
 public static function key($type,$symbol)
 {
-// Extension names are case insensitive
+$symbol=trim($symbol,'\\');
 
-if (($type==self::T_EXTENSION)
-	||($type==self::T_FUNCTION)
-	||($type==self::T_CLASS)) $symbol=strtolower($symbol);
+switch($type)
+	{
+	case self::T_EXTENSION:
+	case self::T_FUNCTION:
+	case self::T_CLASS:
+		$symbol=strtolower($symbol);
+		break;
+	default:
+		// lowercase namespace only
+		$pos=strrpos($symbol,'\\');
+		if ($pos!==false) $symbol=strtolower(substr($symbol,0,$pos)).'\\'.substr($symbol,$pos+1);
+	}
 
-return $type.trim($symbol,'\\');
+return $type.$symbol;
 }
 
 //---------
@@ -187,17 +205,6 @@ public static function get_type_from_key($key)
 if (strlen($key) <= 1) throw new Exception('Invalid key');
 
 return $key{0};
-}
-
-//---------
-// Extracts the symbol from a key. If the key contains
-// a '|' character, ignores everything from this char.
-
-public static function get_symbol_from_key($key)
-{
-if (strlen($key) <= 1) throw new Exception('Invalid key');
-
-return substr($key,1,strcspn($key,'|',1));
 }
 
 //---------
@@ -416,10 +423,7 @@ private static function get_symbol($type,$symbol,$autoload=false
 {
 //echo "get_symbol(".self::get_type_string($type).",$symbol)\n";//TRACE
 
-if (!$autoload)
-	{
-	if (self::symbol_is_defined($type,$symbol)) return true;
-	}
+if ((!$autoload)&&(self::symbol_is_defined($type,$symbol))) return true;
 
 $key=self::key($type,$symbol);
 foreach(array_reverse(self::$mount_order) as $map)
@@ -427,7 +431,7 @@ foreach(array_reverse(self::$mount_order) as $map)
 	if ((!is_null($map)) && $map->resolve_key($key)) return true;
 	}
 
-foreach (self::$failure_handlers as $callable) $callable($key);
+foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
 
 if ($exception) throw new Exception('Automap: Unknown '
 	.self::get_type_string($type).': '.$symbol);
@@ -469,6 +473,9 @@ public static function require_extension($symbol)
 // plain script files and packages.
 // Using a 2-stage creation. __construct creates a simple instance, and
 // realize() really reads the map file.
+// Note: now that the PECL extension exists, there's no need to accelerate the
+// PHP runtime anymore. The priority is given to simplicity. So, realize() is
+// now executed at __construct() time.
 
 private $path;
 private $base_dir; // Prefix to combine with table entries (with trailing separator)
@@ -493,8 +500,9 @@ $this->path=$path;
 $this->mnt=$mnt;
 $this->base_dir=$base_dir;
 $this->flags=$flags;
-
 $this->mnt_count=1;
+
+$this->realize();
 }
 
 //-----
@@ -516,6 +524,8 @@ if (version_compare($this->min_version,self::VERSION) > 0)
 		' Requires at least Automap version '.$this->min_version);
 
 $this->version=trim(substr($buf,30,12));
+if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
+	throw new Exception('Cannot understand this automap. Format too old');
 
 if (strlen($buf)!=($sz=(int)substr($buf,45,8)))		// Check file size
 	throw new Exception('Invalid file size. Should be '.$sz);
@@ -587,7 +597,6 @@ public function symbols()
 {
 self::validate($this->mnt);
 
-$this->realize();
 return $this->symbols;
 }
 
@@ -597,7 +606,6 @@ public function options()
 {
 self::validate($this->mnt);
 
-$this->realize();
 return $this->options;
 }
 
@@ -607,7 +615,6 @@ public function version()
 {
 self::validate($this->mnt);
 
-$this->realize();
 return $this->version;
 }
 
@@ -617,7 +624,6 @@ public function min_version()
 {
 self::validate($this->mnt);
 
-$this->realize();
 return $this->min_version;
 }
 
@@ -626,8 +632,6 @@ return $this->min_version;
 public function option($opt)
 {
 self::validate($this->mnt);
-
-$this->realize();
 
 return (isset($this->options[$opt]) ? $options[$opt] : null);
 }
@@ -643,10 +647,10 @@ return count($this->symbols());
 
 //---
 
-private function call_success_handlers($key,$value)
+private function call_success_handlers($type,$symbol,$ftype,$fpath)
 {
 foreach (self::$success_handlers as $callable)
-	$callable($key,$this->mnt,$value);
+	$callable($type,$symbol,$this->mnt,$ftype,$fpath);
 }
 
 //---
@@ -662,24 +666,25 @@ foreach (self::$success_handlers as $callable)
 
 private function resolve_key($key)
 {
-$this->realize();
 if (!isset($this->symbols[$key])) return false;
 
-$value=$this->symbols[$key];
-$fname=self::get_symbol_from_key($value);
+$a=$this->symbols[$key];
+$ftype=$a['t'];
+$fname=$a['p'];
+$symbol=$a['n'];
 
-switch($ftype=self::get_type_from_key($value))
+switch($ftype)
 	{
 	case self::F_EXTENSION:
 		if (!dl($fname)) return false;
-		$this->call_success_handlers($key,$value);
+		$this->call_success_handlers(self::get_type_from_key($key),$symbol,$ftype,$fname);
 		break;
 
 	case self::F_SCRIPT:
 		$file=$this->base_dir.$fname;
 		//echo "Loading script file : $file\n";//TRACE
 		{ require($file); }
-		$this->call_success_handlers($key,$value);
+		$this->call_success_handlers(self::get_type_from_key($key),$symbol,$ftype,$fname);
 		break;
 
 	case self::F_PACKAGE:
@@ -707,8 +712,6 @@ public function show($subfile_to_url_function=null)
 {
 self::validate($this->mnt);
 
-$this->realize();
-
 if ($html=self::is_web())
 	{
 	$this->html_show($subfile_to_url_function);
@@ -728,13 +731,12 @@ echo "\n* Symbols :\n\n";
 $ktype_len=$kname_len=4;
 $fname_len=10;
 
-foreach($this->symbols as $key => $value)
+foreach($this->symbols as $key => $a)
 	{
 	$ktype=self::get_type_string(self::get_type_from_key($key));
-	$kname=self::get_symbol_from_key($key);
-
-	$ftype=self::get_type_from_key($value);
-	$fname=self::get_symbol_from_key($value);
+	$kname=$a['n'];
+	$ftype=$a['t'];
+	$fname=$a['p'];
 
 	$ktype_len=max($ktype_len,strlen($ktype)+2);
 	$kname_len=max($kname_len,strlen($kname)+2);
@@ -753,13 +755,12 @@ echo '|---';
 echo '|'.str_repeat('-',$fname_len);
 echo "|\n";
 
-foreach($this->symbols as $key => $value)
+foreach($this->symbols as $key => $a)
 	{
 	$ktype=ucfirst(self::get_type_string(self::get_type_from_key($key)));
-	$kname=self::get_symbol_from_key($key);
-
-	$ftype=self::get_type_from_key($value);
-	$fname=self::get_symbol_from_key($value);
+	$kname=$a['n'];
+	$ftype=$a['t'];
+	$fname=$a['p'];
 
 	echo '| '.str_pad(ucfirst($ktype),$ktype_len-1,' ',STR_PAD_RIGHT);
 	echo '| '.str_pad($kname,$kname_len-1,' ',STR_PAD_RIGHT);
@@ -792,13 +793,12 @@ echo "<h2>Symbols</h2>";
 echo '<table border=1 bordercolor="#BBBBBB" cellpadding=3 '
 	.'cellspacing=0 style="border-collapse: collapse"><tr><th>Type</th>'
 	.'<th>Name</th><th>FT</th><th>Defined in</th></tr>';
-foreach($this->symbols as $key => $value)
+foreach($this->symbols as $key => $a)
 	{
 	$ktype=ucfirst(self::get_type_string(self::get_type_from_key($key)));
-	$kname=self::get_symbol_from_key($key);
-
-	$ftype=self::get_type_from_key($value);
-	$fname=self::get_symbol_from_key($value);
+	$kname=$a['n'];
+	$ftype=$a['t'];
+	$fname=$a['p'];
 
 	echo '<tr><td>'.$ktype.'</td><td>'.htmlspecialchars($kname)
 		.'</td><td align=center>'.$ftype.'</td><td>';
@@ -817,13 +817,11 @@ public function export($path=null)
 {
 self::validate($this->mnt);
 
-$this->realize();
-
 $file=(is_null($path) ? "STDOUT" : $path);
 $fp=fopen($file,'w');
 if (!$fp) throw new Exception("$file: Cannot open for writing");
 
-foreach($this->symbols as $key => $value) fwrite($fp,"$key $value\n");
+foreach($this->symbols as $key => $a) fwrite($fp,"$key ".serialize($a)."\n");
 
 fclose($fp);
 }
