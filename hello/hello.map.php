@@ -4,7 +4,7 @@ namespace example;
 
 use NS3 as example3;
 
-if (!class_exists('\Automap',false)) require('Automap.phk');
+require(dirname(__FILE__).'/Automap.phk');
 
 \Automap::mount('auto.map');
 
