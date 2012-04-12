@@ -48,12 +48,19 @@ private static function usage()
 echo "\nUsage: <action> <params...>\n\n";
 echo "Actions :\n";
 echo "    - show <map file>\n";
-echo "    - register_extensions <map file> (execute using 'php -n -d extension_dir=<dir>'\n";
-echo "    - register <map file> <base dir> <relative file paths...>\n";
-echo "    - merge <target map> <relative path> <source maps...>\n";
-echo "    - export <map file> [output_file]\n";
-echo "    - import <map file> [source_file]\n";
+echo "    - check <map file> [<base dir>]\n";
+echo "    - export <map file> [<output file>]\n";
+
+if (class_exists('Automap_Creator',1))
+	{
+	echo "    - register_extensions <map file> (execute using 'php -n -d extension_dir=<dir>'\n";
+	echo "    - register <map file> <base dir> <relative file paths...>\n";
+	echo "    - merge <target map> <relative path> <source maps...>\n";
+	echo "    - import <map file> [<source file>]\n";
+	}
+
 echo "    - help\n\n";
+echo "Please consult the Automap website (http://automap.tekwire.net) for more.\n\n";
 }
 
 //---------
@@ -74,8 +81,14 @@ switch($action)
 	{
 	case 'show': //-- display <map file>
 		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$mnt=Automap::mount($mapfile);
-		Automap::instance($mnt)->show();
+		Automap::instance(Automap::mount($mapfile))->show();
+		break;
+
+	case 'check': //-- check <map file> [<base dir>]
+		if (is_null($mapfile)) self::error_abort('No mapfile');
+		$base_dir=((count($args)==0) ? null : $args[0]);
+		$c=Automap::instance(Automap::mount($mapfile,$base_dir))->check();
+		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
 		break;
 
 	case 'register_extensions':
@@ -86,20 +99,21 @@ switch($action)
 		//-- it came from). The '-d' flag is mandatory as long as PHP cannot
 		//-- dl() outside of 'extension_dir'.
 
+		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
 		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$mf=new Automap_Creator();
+		$mf=new Automap_Creator($mapfile);
 		$mf->register_extension_dir();
-		$mf->dump($mapfile);
+		$mf->dump();
 		break;
 
 	case 'register':
 		//-- register <map file> <$base> <script files (relative paths)>
 
+		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
 		if (is_null($mapfile)) self::error_abort('No mapfile');
 		if (count($args)==0) self::error_abort('No base dir');
 		$base=$args[0];
-		$mf=new Automap_Creator();
-		if (file_exists($mapfile)) $mf->get_mapfile($mapfile);
+		$mf=new Automap_Creator($mapfile);
 		array_shift($args);
 		if (count($args)==0) $args=array('.');
 		foreach($args as $rpath)
@@ -107,21 +121,18 @@ switch($action)
 			$abs_path=$base.DIRECTORY_SEPARATOR.$rpath;
 			$mf->register_path($abs_path,$rpath);
 			}
-		$mf->dump($mapfile);
+		$mf->dump();
 		break;
 
 	case 'merge':
+		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
 		if (is_null($mapfile)) self::error_abort('No mapfile');
 		if (count($args)==0) self::error_abort('No relative path');
 		$rpath=$args[0];
-		$mf=new Automap_Creator();
-		if (file_exists($mapfile)) $mf->get_mapfile($mapfile);
+		$mf=new Automap_Creator($mapfile);
 		array_shift($args);
-		foreach($args as $source_path)
-			{
-			$mf->merge_map($source_path,$rpath);
-			}
-		$mf->dump($mapfile);
+		foreach($args as $source_path) $mf->merge_map($source_path,$rpath);
+		$mf->dump();
 		break;
 
 	case 'export': //-- export <map file>
@@ -131,11 +142,11 @@ switch($action)
 		break;
 
 	case 'import': //-- import <map file>
+		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
 		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$mf=new Automap_Creator();
-		if (file_exists($mapfile)) $mf->get_mapfile($mapfile);
+		$mf=new Automap_Creator($mapfile);
 		foreach($args as $rfile) $mf->import($rfile);
-		$mf->dump($mapfile);
+		$mf->dump();
 		break;
 
 	case 'help':
