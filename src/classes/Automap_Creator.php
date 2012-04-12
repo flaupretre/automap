@@ -50,9 +50,12 @@ const MIN_VERSION='2.0.0'; // Minimum version of runtime to understand the map
 
 //---------
 
-private $symbols=array();
+private $symbols=array();	// array($key => array('T' => <symbol type>
+							// , 'n' => <case-sensitive symbol name>
+							// , 't' => <target type>, 'p' => <target path>))
 private $options=array();
 private $flags;
+private $path=null;
 
 //---------
 // Utilities (taken from PHK_Util)
@@ -78,9 +81,19 @@ if (!rename($tmpf,$path))
 //---------
 // Creates an empty object
 
-public function __construct($flags=0)
+public function __construct($path=null,$flags=0)
 {
 $this->flags=$flags;
+
+$this->path=$path;
+if ((!is_null($path))&&is_file($path))
+	{
+	$source_mnt=Automap::mount($path,null,null,$flags);
+	$source_map=Automap::instance($source_mnt);
+	$this->symbols=$source_map->symbols();
+	$this->options=$source_map->options();
+	Automap::umount($source_mnt);
+	}
 }
 
 //---------
@@ -101,28 +114,19 @@ $this->options=$options;
 }
 
 //---------
-// Can be called with type/symbol or with type=null/symbol=key
-// Replace key even if previously defined
 
-private function add_entry($type,$symbol,$va)
+private function add_entry($va)
 {
-if (is_null($type))
-	{
-	$key=$symbol;
-	}
-else
-	{
-	$key=Automap::key($type,$symbol);
-	$va['n']=$symbol;
-	}
-$this->symbols[$key]=$va;
+$this->symbols[]=$va;
 }
 
 //---------
 
-private static function mk_varray($type,$path)
+private function add_ts_entry($stype,$sname,$va)
 {
-return array('t' => $type, 'p' => $path);
+$va['T']=$stype;
+$va['n']=$sname;
+$this->add_entry($va);
 }
 
 //---------
@@ -133,36 +137,37 @@ return count($this->symbols);
 }
 
 //---------
+
+private static function mk_varray($ftype,$fpath)
+{
+return array('t' => $ftype, 'p' => $fpath);
+}
+
+//---------
 // Remove the entries contaning $value
 
 private function cleanup($va)
 {
-$type=$va['t'];
-$path=$va['p'];
+$ftype=$va['t'];
+$fpath=$va['p'];
 foreach(array_keys($this->symbols) as $key)
 	{
-	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
+	if (($this->symbols[$key]['t']===$ftype)&&($this->symbols[$key]['p']===$fpath))
 		unset($this->symbols[$key]);
 	}
 }
 
 //---------
-
-public function get_mapfile($path,$flags=0)
-{
-$source_mnt=Automap::mount($path,null,null,$flags);
-$source_map=Automap::instance($source_mnt);
-$this->symbols=$source_map->symbols();
-$this->options=$source_map->options();
-
-Automap::umount($source_mnt);
-}
-
-//---------
+// Ensures each key is present only once
 
 public function serialize()
 {
-$data=serialize(array('map' => $this->symbols
+$bmap=array();
+foreach($this->symbols as $va)
+	{
+	$bmap[Automap::key($va['T'],$va['n'])]=$va['T'].$va['t'].$va['n'].'|'.$va['p'];
+	}
+$data=serialize(array('map' => array_values($bmap)
 	, 'options' => $this->options));
 
 return Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
@@ -171,8 +176,11 @@ return Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
 
 //---------
 
-public function dump($path)
+public function dump($path=null)
 {
+if (is_null($path)) $path=$this->path;
+if (is_null($path)) throw new Exception('No path provided');
+
 $data=$this->serialize();
 
 self::atomic_write($path,$data);
@@ -198,24 +206,24 @@ if (($ext_name=array_pop($a))===NULL)
 
 $ext=new ReflectionExtension($ext_name);
 
-self::add_entry(Automap::T_EXTENSION,$ext_name,$va);
+self::add_ts_entry(Automap::T_EXTENSION,$ext_name,$va);
 
 foreach($ext->getFunctions() as $func)
-	self::add_entry(Automap::T_FUNCTION,$func->getName(),$va);
+	self::add_ts_entry(Automap::T_FUNCTION,$func->getName(),$va);
 
 foreach(array_keys($ext->getConstants()) as $constant)
-	self::add_entry(Automap::T_CONSTANT,$constant,$va);
+	self::add_ts_entry(Automap::T_CONSTANT,$constant,$va);
 
 foreach($ext->getClasses() as $class)
 	{
-	self::add_entry(Automap::T_CLASS,$class->getName(),$va);
+	self::add_ts_entry(Automap::T_CLASS,$class->getName(),$va);
 	}
 	
 if (method_exists($ext,'getInterfaces')) // Compatibility
 	{
 	foreach($ext->getInterfaces() as $interface)
 		{
-		self::add_entry(Automap::T_CLASS,$interface->getName(),$va);
+		self::add_ts_entry(Automap::T_CLASS,$interface->getName(),$va);
 		}
 	}
 
@@ -223,7 +231,7 @@ if (method_exists($ext,'getTraits')) // Compatibility
 	{
 	foreach($ext->getTraits() as $trait)
 		{
-		self::add_entry(Automap::T_CLASS,$trait->getName(),$va);
+		self::add_ts_entry(Automap::T_CLASS,$trait->getName(),$va);
 		}
 	}
 }
@@ -317,7 +325,7 @@ catch (Exception $e)
 
 foreach($symbols as $sa)
 	{
-	$this->add_entry($sa[0],$sa[1],$va);
+	$this->add_ts_entry($sa[0],$sa[1],$va);
 	}
 }
 
@@ -598,6 +606,7 @@ return (substr(file_get_contents($path),0,strlen(Automap::MAGIC))===Automap::MAG
 }
 
 //---------
+// Ignore map files (must be merged explicitely when desired)
 
 public function register_path($fpath,$rpath)
 {
@@ -616,7 +625,10 @@ switch($type=filetype($fpath))
 			{
 			$this->register_phk($fpath,$rpath);
 			}
-		else $this->register_script($fpath,$rpath);
+		else
+			{
+			if (!self::is_mapfile($fpath)) $this->register_script($fpath,$rpath);
+			}
 		break;
 
 	default:
@@ -630,10 +642,10 @@ public function merge_map($fpath,$rpath)
 {
 $mnt=Automap::mount($fpath);
 $map=Automap::instance($mnt);
-foreach($map->symbols() as $key => $va)
+foreach($map->symbols() as $va)
 	{
 	$va['p']=self::combine_path($rpath,$va['p']);
-	$this->add_entry(null,$key,$va);
+	$this->add_entry($va);
 	}
 }
 
@@ -656,13 +668,12 @@ if (Automap::is_mounted($mnt)) // If package has an automap
 		//var_dump($key);//TRACE
 		$va['t']=Automap::F_PACKAGE;
 		$va['p']=$rpath;
-		$this->add_entry(null,$key,$va);
+		$this->add_entry($va);
 		}
 	}
 }
 
 //---------
-//TODO: Redesign import/export
 
 public function import($path)
 {
@@ -671,8 +682,9 @@ $fp=is_null($path) ? STDIN : fopen($path,'r');
 while(($line=fgets($fp))!==false)
 	{
 	if (($line=trim($line))==='') continue;
-	list($key,$value)=explode(' ',$line,2);
-	$this->add_entry(null,$key,$value);
+	list($stype,$sname,$ftype,$fname)=explode(' ',$line);
+	$va=self::mk_varray($ftype,$fname);
+	$this->add_ts_entry($stype,$sname,$va);
 	}
 if (!is_null($path)) fclose($fp);
 }

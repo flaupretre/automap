@@ -135,7 +135,61 @@ if ($inode==0) // This system does not support inodes
 return sprintf('%s_%X_%X_%X',$prefix,$dev,$inode,$mtime);
 }
 
+//---------
+// Combines a base directory and a relative path. If the base directory is
+// '.', returns the relative part without modification
+// Use '/' separator on stream-wrapper URIs
+
+public static function combine_path($dir,$rpath)
+{
+if ($dir=='.' || $dir=='') return $rpath;
+$rpath=trim($rpath,'/');
+$rpath=trim($rpath,'\\');
+
+$separ=(strpos($dir,':')!==false) ? '/' : DIRECTORY_SEPARATOR;
+if (($dir==='/') || ($dir==='\\')) $separ='';
+else
+	{
+	$c=substr($dir,-1,1);
+	if (($c==='/') || ($c=='\\')) $dir=rtrim($dir,$c);
+	}
+
+return (($rpath==='.') ? $dir : $dir.$separ.$rpath);
+}
+
+//---------------------------------
+
+private static function is_absolute_path($path)
+{
+return ((strpos($path,':')!==false)
+	||(strpos($path,'/')===0)
+	||(strpos($path,'\\')===0));
+}
+
+//---------------------------------
+
+private static function mk_absolute_path($path,$separ=false)
+{
+if (!self::is_absolute_path($path))
+	{
+	$path=self::combine_path(getcwd(),$path);
+	}
+
+if ($path==='/') return $path;
+
+$path=rtrim($path,'/\\');
+if ($separ) $path=$path.'/';
+return $path;
+}
+
 //================== Map manager (static methods) =======================
+
+public static function path_id($path)
+{
+return self::path_unique_id('m',$path,$dummy);
+}
+
+//--------------
 
 public static function min_map_version()
 {
@@ -174,9 +228,9 @@ self::$success_handlers[]=$callable;
 
 //-------- Key management -----------
 
-// Combines a type and a symbol in a 'key'. The resulting string can be used
-// as a key or a value with the appropriate prefix in an automap.
+// Combines a type and a symbol in a 'key'.
 // Note: Extension names are case insensitive
+// Unpublished. External use limited to Automap_Creator
 
 public static function key($type,$symbol)
 {
@@ -200,16 +254,7 @@ return $type.$symbol;
 
 //---------
 
-public static function get_type_from_key($key)
-{
-if (strlen($key) <= 1) throw new Exception('Invalid key');
-
-return $key{0};
-}
-
-//---------
-
-public static function get_type_string($type)
+public static function type_to_string($type)
 {
 if (!isset(self::$type_strings[$type]))
 	throw new Exception("$type: Invalid type");
@@ -291,28 +336,6 @@ return array_keys(self::$automaps);
 
 //---------
 /**
-* Given a file path, tries to determine if it is currently mounted. If it is
-* the case, the corresponding mount point is returned. If not, an exception is
-* thrown.
-*
-* @param string $path Path of an automap file
-* @return the corresponding mount point
-* @throws Exception if the file is not currently mounted
-*/
-
-public static function path_to_mnt($path)
-{
-$dummy=null;
-
-$mnt=self::path_unique_id('m',$path,$dummy);
-
-if (self::is_mounted($mnt)) return $mnt;
-
-throw new Exception($path.': path is not mounted');
-}
-
-//---------
-/**
 * Mount an automap and returns the new (or previous, if already loaded)
 * mount point.
 *
@@ -381,8 +404,16 @@ if (self::is_mounted($mnt))
 		{
 		if ($obj===$map) self::$mount_order[$order]=null;
 		}
+	$map->invalidate();
 	unset(self::$automaps[$mnt]);
 	}
+}
+
+//---------------------------------
+
+public static function using_accelerator()
+{
+return false;
 }
 
 //-------- Symbol resolution -----------
@@ -399,7 +430,7 @@ switch($type)
 
 	case self::T_CLASS:		return class_exists($symbol,false)
 								|| interface_exists($symbol,false)
-								|| trait_exists($symbol,false);
+								|| (function_exists('trait_exists') && trait_exists($symbol,false));
 
 	case self::T_EXTENSION:	return extension_loaded($symbol);
 	}
@@ -408,22 +439,23 @@ switch($type)
 //---------
 // The autoload handler, the default type is 'class', hoping that future
 // versions of PHP support function and constant autoloading.
+// Unpublished
 
 public static function autoload_hook($symbol,$type=self::T_CLASS)
 {
-self::get_symbol($type,$symbol,true,false);
+self::resolve_symbol($type,$symbol,true,false);
 }
 
 //---------
 // resolve a symbol, i.e. load what needs to be loaded for the symbol to be
 // defined. Returns true on success / false if unable to resolve symbol.
 
-private static function get_symbol($type,$symbol,$autoload=false
+private static function resolve_symbol($type,$symbol,$autoloading=false
 	,$exception=false)
 {
-//echo "get_symbol(".self::get_type_string($type).",$symbol)\n";//TRACE
+//echo "resolve_symbol(".self::type_to_string($type).",$symbol)\n";//TRACE
 
-if ((!$autoload)&&(self::symbol_is_defined($type,$symbol))) return true;
+if ((!$autoloading)&&(self::symbol_is_defined($type,$symbol))) return true;
 
 $key=self::key($type,$symbol);
 foreach(array_reverse(self::$mount_order) as $map)
@@ -434,7 +466,7 @@ foreach(array_reverse(self::$mount_order) as $map)
 foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
 
 if ($exception) throw new Exception('Automap: Unknown '
-	.self::get_type_string($type).': '.$symbol);
+	.self::type_to_string($type).': '.$symbol);
 
 return false;
 }
@@ -442,40 +474,38 @@ return false;
 //---------
 
 public static function get_function($symbol)
-	{ return self::get_symbol(self::T_FUNCTION,$symbol,false,false); }
+	{ return self::resolve_symbol(self::T_FUNCTION,$symbol,false,false); }
 
 public static function get_constant($symbol)
-	{ return self::get_symbol(self::T_CONSTANT,$symbol,false,false); }
+	{ return self::resolve_symbol(self::T_CONSTANT,$symbol,false,false); }
 
 public static function get_class($symbol)
-	{ return self::get_symbol(self::T_CLASS,$symbol,false,false); }
+	{ return self::resolve_symbol(self::T_CLASS,$symbol,false,false); }
 
 public static function get_extension($symbol)
-	{ return self::get_symbol(self::T_EXTENSION,$symbol,false,false); }
+	{ return self::resolve_symbol(self::T_EXTENSION,$symbol,false,false); }
 
 //---------
 
 public static function require_function($symbol)
-	{ return self::get_symbol(self::T_FUNCTION,$symbol,false,true); }
+	{ return self::resolve_symbol(self::T_FUNCTION,$symbol,false,true); }
 
 public static function require_constant($symbol)
-	{ return self::get_symbol(self::T_CONSTANT,$symbol,false,true); }
+	{ return self::resolve_symbol(self::T_CONSTANT,$symbol,false,true); }
 
 public static function require_class($symbol)
-	{ return self::get_symbol(self::T_CLASS,$symbol,false,true); }
+	{ return self::resolve_symbol(self::T_CLASS,$symbol,false,true); }
 
 public static function require_extension($symbol)
-	{ return self::get_symbol(self::T_EXTENSION,$symbol,false,true); }
+	{ return self::resolve_symbol(self::T_EXTENSION,$symbol,false,true); }
 
 //=============== Instance (one per map) =================================
 // Automap instance
 // Used for plain maps and package-wrapped maps. So, this class must support
 // plain script files and packages.
-// Using a 2-stage creation. __construct creates a simple instance, and
-// realize() really reads the map file.
 // Note: now that the PECL extension exists, there's no need to accelerate the
 // PHP runtime anymore. The priority is given to simplicity. So, realize() is
-// now executed at __construct() time.
+// now called by __construct().
 
 private $path;
 private $base_dir; // Prefix to combine with table entries (with trailing separator)
@@ -483,10 +513,13 @@ private $mnt;
 private $flags;	 // Load flags;
 private $mnt_count;
 
-private $symbols=null;	// Null until realize()d
-private $options=null;
+private $symbols=null;	// array($key => array('T' => <symbol type>
+						// , 'n' => <case-sensitive symbol name>
+						// , 't' => <target type>, 'p' => <target path>))
+private $options=null;	// array()
 private $version;
 private $min_version;
+private $valid;			// True if the instance is valid (still mounted)
 
 //-----
 // This object must be created from load() or from Automap_Creator.
@@ -496,13 +529,35 @@ private $min_version;
 
 private function __construct($path,$base_dir,$mnt,$flags=0)
 {
-$this->path=$path;
+$this->path=self::mk_absolute_path($path);
 $this->mnt=$mnt;
-$this->base_dir=$base_dir;
+$this->base_dir=self::mk_absolute_path($base_dir,true);
 $this->flags=$flags;
 $this->mnt_count=1;
+$this->valid=true;
 
 $this->realize();
+}
+
+//-----
+
+public function is_valid()
+{
+return ($this->valid);
+}
+
+//-----
+
+private function check_valid()
+{
+if (!$this->is_valid()) throw new Exception('Accessing invalid (unmounted) Automap instance');
+}
+
+//-----
+
+private function invalidate()
+{
+$this->valid=false;
 }
 
 //-----
@@ -520,12 +575,12 @@ if (substr($buf,0,14)!=self::MAGIC) throw new Exception('Bad Magic');
 
 $this->min_version=trim(substr($buf,16,12));	// Check min version
 if (version_compare($this->min_version,self::VERSION) > 0)
-	throw new Exception('Cannot understand this automap.'.
+	throw new Exception($this->path.': Cannot understand this map.'.
 		' Requires at least Automap version '.$this->min_version);
 
 $this->version=trim(substr($buf,30,12));
 if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
-	throw new Exception('Cannot understand this automap. Format too old');
+	throw new Exception('Cannot understand this map. Format too old.');
 
 if (strlen($buf)!=($sz=(int)substr($buf,45,8)))		// Check file size
 	throw new Exception('Invalid file size. Should be '.$sz);
@@ -536,17 +591,28 @@ if (($buf=unserialize(substr($buf,53)))===false)
 if (!is_array($buf))
 	throw new Exception('Map file should contain an array');
 
-if (!array_key_exists('map',$buf))
-	throw new Exception('No symbol table');
-
-if (!array_key_exists('options',$buf))
-	throw new Exception('No options array');
-
-if (!is_array($this->symbols=$buf['map']))
-	throw new Exception('Symbol table should contain an array');
-
+if (!array_key_exists('options',$buf)) throw new Exception('No options array');
 if (!is_array($this->options=$buf['options']))
 	throw new Exception('Options should be an array');
+
+if (!array_key_exists('map',$buf)) throw new Exception('No symbol table');
+if (!is_array($bsymbols=$buf['map']))
+	throw new Exception('Symbol table should contain an array');
+$this->symbols=array();
+
+foreach($bsymbols as $str)
+	{
+	if (strlen($str)<5) throw new Exception("Invalid value string: <$str>");
+	$a=array();
+	$a['T']=$str{0};
+	$a['t']=$str{1};
+	$ta=explode('|',substr($str,2));
+	if (count($ta)<2) throw new Exception("Invalid value string: <$str>");
+	$a['n']=$ta[0];
+	$a['p']=$ta[1];
+	$key=self::key($a['T'],$a['n']);
+	$this->symbols[$key]=$a;
+	}
 }
 catch (Exception $e)
 	{
@@ -559,7 +625,7 @@ catch (Exception $e)
 
 public function path()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->path;
 }
@@ -568,7 +634,7 @@ return $this->path;
 
 public function base_dir()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->base_dir;
 }
@@ -577,7 +643,7 @@ return $this->base_dir;
 
 public function mnt()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->mnt;
 }
@@ -586,25 +652,16 @@ return $this->mnt;
 
 public function flags()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->flags;
 }
 
 //---
 
-public function symbols()
-{
-self::validate($this->mnt);
-
-return $this->symbols;
-}
-
-//---
-
 public function options()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->options;
 }
@@ -613,7 +670,7 @@ return $this->options;
 
 public function version()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->version;
 }
@@ -622,7 +679,7 @@ return $this->version;
 
 public function min_version()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return $this->min_version;
 }
@@ -631,7 +688,7 @@ return $this->min_version;
 
 public function option($opt)
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 return (isset($this->options[$opt]) ? $options[$opt] : null);
 }
@@ -640,17 +697,47 @@ return (isset($this->options[$opt]) ? $options[$opt] : null);
 
 public function symbol_count()
 {
-self::validate($this->mnt);
+$this->check_valid();
 
-return count($this->symbols());
+return count($this->symbols);
+}
+
+//---
+// Return an array without keys (keys are kept private and may change in the future)
+// The returned path is an absolute path.
+
+public function symbols()
+{
+$this->check_valid();
+
+$ret=array();
+
+foreach($this->symbols as $entry)
+	{
+	$re=array();
+	$re['stype']=$entry['T'];
+	$re['symbol']=$entry['n'];
+	$re['ptype']=$entry['t'];
+	$re['path']=$this->abs_path($entry);
+	$ret[]=$re;
+	}
+return $ret;
 }
 
 //---
 
-private function call_success_handlers($type,$symbol,$ftype,$fpath)
+private function call_success_handlers($entry,$path)
 {
 foreach (self::$success_handlers as $callable)
-	$callable($type,$symbol,$this->mnt,$ftype,$fpath);
+	$callable($this,$entry['T'],$entry['n'],$entry['t'],$path);
+}
+
+//---
+
+private function abs_path($entry)
+{
+if ($entry['t']===self::F_PACKAGE) return $entry['p'];
+else return $this->base_dir.$entry['p'];
 }
 
 //---
@@ -668,41 +755,102 @@ private function resolve_key($key)
 {
 if (!isset($this->symbols[$key])) return false;
 
-$a=$this->symbols[$key];
-$ftype=$a['t'];
-$fname=$a['p'];
-$symbol=$a['n'];
+$entry=$this->symbols[$key];
+$stype=$entry['T'];
+$sname=$entry['n'];
+$ftype=$entry['t'];
+$path=$this->abs_path($entry);
 
 switch($ftype)
 	{
 	case self::F_EXTENSION:
-		if (!dl($fname)) return false;
-		$this->call_success_handlers(self::get_type_from_key($key),$symbol,$ftype,$fname);
+		if (!dl($path)) return false;
+		$this->call_success_handlers($entry,$path);
 		break;
 
 	case self::F_SCRIPT:
-		$file=$this->base_dir.$fname;
-		//echo "Loading script file : $file\n";//TRACE
-		{ require($file); }
-		$this->call_success_handlers(self::get_type_from_key($key),$symbol,$ftype,$fname);
+		//echo "Loading script file : $path\n";//TRACE
+		{ require($path); }
+		$this->call_success_handlers($entry,$path);
 		break;
 
 	case self::F_PACKAGE:
 		// Remove E_NOTICE messages if the test script is a package - workaround
 		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
 
-		$file=$this->base_dir.$fname;
 		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
-		$mnt=require($file);
+		$mnt=require($path);
 		error_reporting($errlevel);
+		// Don't call success handlers for a package (recursion)
 		self::instance($mnt)->resolve_key($key);
 		break;
 
 	default:
-		throw new Exception('<'.$ftype.'>: Unknown file type in map');
+		throw new Exception('<'.$ftype.'>: Unknown file type');
 	}
 
 return true;
+}
+
+//---
+// Returns the number of errors found
+
+public function check()
+{
+$this->check_valid();
+
+$c=0;
+foreach(array_keys($this->symbols) as $key) $c+=$this->check_key($key);
+return $c;
+}
+
+//---------
+
+private function check_key($key)
+{
+try
+{
+$entry=$this->symbols[$key];
+$stype=$entry['T'];
+$sname=$entry['n'];
+$ftype=$entry['t'];
+$fname=$entry['p'];
+
+switch($ftype)
+	{
+	case self::F_EXTENSION:
+		// Do nothing
+		break;
+
+	case self::F_SCRIPT:
+		$file=$this->abs_path($entry);
+		if (!is_file($file)) throw new Exception($file.': File not found');
+		break;
+
+	case self::F_PACKAGE:
+		$file=$this->abs_path($entry);
+		if (!is_file($file)) throw new Exception($file.': File not found');
+		if (!PHK::file_is_package($file))
+			throw new Exception($file.': File is not a PHK package');
+
+		$file=$this->base_dir.$fname;
+		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
+		$mnt=PHK_Mgr::mount($file,PHK::F_NO_MOUNT_SCRIPT);
+		error_reporting($errlevel);
+		self::instance($mnt)->check_key($key);
+		PHK::umount($mnt);
+		break;
+
+	default:
+		throw new Exception('<'.$ftype.'>: Unknown file type');
+	}
+}
+catch (Exception $e)
+	{
+	echo 'Error ('.self::type_to_string($stype)." $sname): ".$e->getMessage()."\n";
+	return 1;
+	}
+return 0;
 }
 
 //---------
@@ -710,7 +858,7 @@ return true;
 
 public function show($subfile_to_url_function=null)
 {
-self::validate($this->mnt);
+$this->check_valid();
 
 if ($html=self::is_web())
 	{
@@ -728,42 +876,42 @@ print_r($this->options);
 
 echo "\n* Symbols :\n\n";
 
-$ktype_len=$kname_len=4;
+$stype_len=$sname_len=4;
 $fname_len=10;
 
-foreach($this->symbols as $key => $a)
+foreach($this->symbols as $a)
 	{
-	$ktype=self::get_type_string(self::get_type_from_key($key));
-	$kname=$a['n'];
+	$stype=self::type_to_string($a['T']);
+	$sname=$a['n'];
 	$ftype=$a['t'];
 	$fname=$a['p'];
 
-	$ktype_len=max($ktype_len,strlen($ktype)+2);
-	$kname_len=max($kname_len,strlen($kname)+2);
+	$stype_len=max($stype_len,strlen($stype)+2);
+	$sname_len=max($sname_len,strlen($sname)+2);
 	$fname_len=max($fname_len,strlen($fname)+2);
 	}
 
-echo str_repeat('-',$ktype_len+$kname_len+$fname_len+8)."\n";
-echo '|'.str_pad('Type',$ktype_len,' ',STR_PAD_BOTH);
-echo '|'.str_pad('Name',$kname_len,' ',STR_PAD_BOTH);
+echo str_repeat('-',$stype_len+$sname_len+$fname_len+8)."\n";
+echo '|'.str_pad('Type',$stype_len,' ',STR_PAD_BOTH);
+echo '|'.str_pad('Name',$sname_len,' ',STR_PAD_BOTH);
 echo '| T ';
 echo '|'.str_pad('Defined in',$fname_len,' ',STR_PAD_BOTH);
 echo "|\n";
-echo '|'.str_repeat('-',$ktype_len);
-echo '|'.str_repeat('-',$kname_len);
+echo '|'.str_repeat('-',$stype_len);
+echo '|'.str_repeat('-',$sname_len);
 echo '|---';
 echo '|'.str_repeat('-',$fname_len);
 echo "|\n";
 
-foreach($this->symbols as $key => $a)
+foreach($this->symbols as $a)
 	{
-	$ktype=ucfirst(self::get_type_string(self::get_type_from_key($key)));
-	$kname=$a['n'];
+	$stype=ucfirst(self::type_to_string($a['T']));
+	$sname=$a['n'];
 	$ftype=$a['t'];
 	$fname=$a['p'];
 
-	echo '| '.str_pad(ucfirst($ktype),$ktype_len-1,' ',STR_PAD_RIGHT);
-	echo '| '.str_pad($kname,$kname_len-1,' ',STR_PAD_RIGHT);
+	echo '| '.str_pad(ucfirst($stype),$stype_len-1,' ',STR_PAD_RIGHT);
+	echo '| '.str_pad($sname,$sname_len-1,' ',STR_PAD_RIGHT);
 	echo '| '.$ftype.' ';
 	echo '| '.str_pad($fname,$fname_len-1,' ',STR_PAD_RIGHT);
 	echo "|\n";
@@ -774,6 +922,8 @@ foreach($this->symbols as $key => $a)
 
 private function html_show($subfile_to_url_function=null)
 {
+$this->check_valid();
+
 echo "<h2>Global information</h2>";
 
 echo '<table border=0>';
@@ -793,14 +943,14 @@ echo "<h2>Symbols</h2>";
 echo '<table border=1 bordercolor="#BBBBBB" cellpadding=3 '
 	.'cellspacing=0 style="border-collapse: collapse"><tr><th>Type</th>'
 	.'<th>Name</th><th>FT</th><th>Defined in</th></tr>';
-foreach($this->symbols as $key => $a)
+foreach($this->symbols as $a)
 	{
-	$ktype=ucfirst(self::get_type_string(self::get_type_from_key($key)));
-	$kname=$a['n'];
+	$stype=ucfirst(self::type_to_string($a['T']));
+	$sname=$a['n'];
 	$ftype=$a['t'];
 	$fname=$a['p'];
 
-	echo '<tr><td>'.$ktype.'</td><td>'.htmlspecialchars($kname)
+	echo '<tr><td>'.$stype.'</td><td>'.htmlspecialchars($sname)
 		.'</td><td align=center>'.$ftype.'</td><td>';
 	if (!is_null($subfile_to_url_function)) 
 		echo '<a href="'.call_user_func($subfile_to_url_function,$fname).'">';
@@ -815,13 +965,13 @@ echo '</table>';
 
 public function export($path=null)
 {
-self::validate($this->mnt);
+$this->check_valid();
 
-$file=(is_null($path) ? "STDOUT" : $path);
+$file=(is_null($path) ? "php://stdout" : $path);
 $fp=fopen($file,'w');
 if (!$fp) throw new Exception("$file: Cannot open for writing");
 
-foreach($this->symbols as $key => $a) fwrite($fp,"$key ".serialize($a)."\n");
+foreach($this->symbols as $a) fwrite($fp,$a['T'].'|'.$a['n'].'|'.$a['t'].'|'.$a['p']."\n");
 
 fclose($fp);
 }
