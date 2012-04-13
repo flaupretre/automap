@@ -86,14 +86,7 @@ public function __construct($path=null,$flags=0)
 $this->flags=$flags;
 
 $this->path=$path;
-if ((!is_null($path))&&is_file($path))
-	{
-	$source_mnt=Automap::mount($path,null,null,$flags);
-	$source_map=Automap::instance($source_mnt);
-	$this->symbols=$source_map->symbols();
-	$this->options=$source_map->options();
-	Automap::umount($source_mnt);
-	}
+if ((!is_null($path))&&is_file($path)) $this->read_map_file($path);
 }
 
 //---------
@@ -117,7 +110,16 @@ $this->options=$options;
 
 private function add_entry($va)
 {
-$this->symbols[]=$va;
+$key=Automap::key($va['T'],$va['n']);
+if (isset($this->symbols[$key]))
+	{
+	$entry=$this->symbols[$key];
+	echo "** Warning: Symbol multiply defined: ".Automap::type_to_string($va['T'])
+		.' '.$va['n']."\n	Previous location: ".Automap::type_to_string($va['t'])
+		.' '.$va['p']."\n	New location: ".Automap::type_to_string($entry['t'])
+		.' '.$entry['n']."\n** Ignoring new definition\n";
+	}
+else $this->symbols[$key]=$va;
 }
 
 //---------
@@ -163,12 +165,11 @@ foreach(array_keys($this->symbols) as $key)
 public function serialize()
 {
 $bmap=array();
-foreach($this->symbols as $va)
+foreach($this->symbols as $key => $va)
 	{
-	$bmap[Automap::key($va['T'],$va['n'])]=$va['T'].$va['t'].$va['n'].'|'.$va['p'];
+	$bmap[]=$va['T'].$va['t'].$va['n'].'|'.$va['p'];
 	}
-$data=serialize(array('map' => array_values($bmap)
-	, 'options' => $this->options));
+$data=serialize(array('map' => $bmap, 'options' => $this->options));
 
 return Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
 	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+53,8).$data;
@@ -638,14 +639,37 @@ switch($type=filetype($fpath))
 
 //---------
 
-public function merge_map($fpath,$rpath)
+public function read_map_file($fpath)
+{
+$mnt=Automap::mount($fpath);
+$map=Automap::instance($mnt);
+$this->options=$map->options();
+$this->symbols=array();
+$this->merge_map_symbols($map);
+Automap::umount($mnt);
+}
+
+//---------
+
+public function merge_map_file($fpath,$rpath)
+{
+$mnt=Automap::mount($fpath);
+$map=Automap::instance($mnt);
+$this->merge_map_symbols($map,$rpath);
+Automap::umount($mnt);
+}
+
+
+//---------
+
+public function merge_map_symbols($rpath='.')
 {
 $mnt=Automap::mount($fpath);
 $map=Automap::instance($mnt);
 foreach($map->symbols() as $va)
 	{
-	$va['p']=self::combine_path($rpath,$va['p']);
-	$this->add_entry($va);
+	$this->add_ts_entry($va['stype'],$va['sname'],$va['ftype']
+		,self::combine_path($rpath,$va['rpath']));
 	}
 }
 

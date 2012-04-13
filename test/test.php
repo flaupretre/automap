@@ -130,6 +130,9 @@ foreach ($syms as $sym)
 	$t->check('symbols(): element contains <symbol> index',isset($sym['symbol']));
 	$t->check('symbols(): element contains <ptype> index',isset($sym['ptype']));
 	$t->check('symbols(): element contains <path> index',isset($sym['path']));
+	$t->check('symbols(): checking path',file_exists($sym['path']));
+	$t->check('symbols(): element contains <rpath> index',isset($sym['rpath']));
+	$t->check('symbols(): checking rpath',file_exists($sym['rpath']));
 	}
 
 $t->check('check() returns 0 errors',$map1->check()===0);

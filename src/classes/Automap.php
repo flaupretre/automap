@@ -718,6 +718,7 @@ foreach($this->symbols as $entry)
 	$re['stype']=$entry['T'];
 	$re['symbol']=$entry['n'];
 	$re['ptype']=$entry['t'];
+	$re['rpath']=$entry['p'];
 	$re['path']=$this->abs_path($entry);
 	$ret[]=$re;
 	}

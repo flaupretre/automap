@@ -131,7 +131,7 @@ switch($action)
 		$rpath=$args[0];
 		$mf=new Automap_Creator($mapfile);
 		array_shift($args);
-		foreach($args as $source_path) $mf->merge_map($source_path,$rpath);
+		foreach($args as $source_path) $mf->merge_map_file($source_path,$rpath);
 		$mf->dump();
 		break;
 
