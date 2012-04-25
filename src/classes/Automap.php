@@ -342,9 +342,9 @@ return array_keys(self::$automaps);
 * @param string $path The path of an existing automap file
 * @param string $base_dir The base directory to use as a prefix (with trailing
 *				separator).
-* @param int $flags Or-ed combination of mount flags.
 * @param string $mnt The mount point to use. Reserved for stream wrappers.
 *					 Should be null for plain files.
+* @param int $flags Or-ed combination of mount flags.
 * @return string the mount point
 */
 
