@@ -81,13 +81,15 @@ switch($action)
 	{
 	case 'show': //-- display <map file>
 		if (is_null($mapfile)) self::error_abort('No mapfile');
-		Automap::instance(Automap::mount($mapfile))->show();
+		$map=Automap::instance(Automap::mount($mapfile));
+		Automap_Tools::show($map);
 		break;
 
 	case 'check': //-- check <map file> [<base dir>]
 		if (is_null($mapfile)) self::error_abort('No mapfile');
 		$base_dir=((count($args)==0) ? null : $args[0]);
-		$c=Automap::instance(Automap::mount($mapfile,$base_dir))->check();
+		$map=Automap::instance(Automap::mount($mapfile));
+		$c=Automap_Tools::check($map);
 		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
 		break;
 
@@ -138,7 +140,8 @@ switch($action)
 	case 'export': //-- export <map file>
 		if (is_null($mapfile)) self::error_abort('No mapfile');
 		$output=isset($args[1]) ? $args[1] : null;
-		Automap::instance(Automap::mount($mapfile))->export($output);
+		$map=Automap::instance(Automap::mount($mapfile));
+		Automap_Tools::export($map,$output);
 		break;
 
 	case 'import': //-- import <map file>

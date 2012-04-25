@@ -135,7 +135,7 @@ foreach ($syms as $sym)
 	$t->check('symbols(): checking rpath',file_exists($sym['rpath']));
 	}
 
-$t->check('check() returns 0 errors',$map1->check()===0);
+$t->check('check() returns 0 errors',Automap_Tools::check($map1)===0);
 
 //---------------------------------
 $t->start('Explicit get methods');
