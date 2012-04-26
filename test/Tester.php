@@ -9,6 +9,9 @@ private $tnum=0;
 private $cnum=0;
 private $ccount=0;
 private $errors=array();
+private $col=0;
+
+const MAXCOLS=50;
 
 //---------------
 
@@ -29,6 +32,19 @@ $this->tname=$tname;
 
 //---------------
 
+private function display_char($c)
+{
+$this->col++;
+if ($this->col > self::MAXCOLS)
+	{
+	echo "\n";
+	$this->col=0;
+	}
+echo $c;
+}
+
+//---------------
+
 public function check($ctext,$cond)
 {
 $this->cnum++;
@@ -36,11 +52,11 @@ $this->ccount++;
 
 if ($cond)
 	{
-	echo '.';
+	self::display_char('.');
 	}
 else
 	{
-	echo 'F';
+	self::display_char('F');
 	$this->errors[]=array('tname' => $this->tname
 		, 'tnum' => $this->tnum
 		, 'ctext' => $ctext
