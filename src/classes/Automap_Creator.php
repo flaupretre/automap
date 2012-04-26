@@ -299,6 +299,7 @@ return trim(str_replace('\\','/',$rpath),'/\\');
 
 private static function combine_path($dpath,$fpath)
 {
+if ($dpath==='.') return $fpath;
 return $dpath.(($dpath==='') ? '' : '/').$fpath;
 }
 
@@ -662,14 +663,12 @@ Automap::umount($mnt);
 
 //---------
 
-public function merge_map_symbols($rpath='.')
+public function merge_map_symbols($map,$rpath='.')
 {
-$mnt=Automap::mount($fpath);
-$map=Automap::instance($mnt);
 foreach($map->symbols() as $va)
 	{
-	$this->add_ts_entry($va['stype'],$va['sname'],$va['ftype']
-		,self::combine_path($rpath,$va['rpath']));
+	$this->add_ts_entry($va['stype'],$va['symbol'],self::mk_varray($va['ptype']
+		,self::combine_path($rpath,$va['rpath'])));
 	}
 }
 
