@@ -703,6 +703,28 @@ return count($this->symbols);
 }
 
 //---
+
+private function export_entry($entry)
+{
+return array(
+	'stype'		=> $entry['T'],
+	'symbol' 	=> $entry['n'],
+	'ptype'		=> $entry['t'],
+	'rpath'		=> $entry['p'],
+	'path'		=> $this->abs_path($entry)
+	);
+}
+
+//---
+
+public function get_symbol($type,$symbol)
+{
+$key=self::key($type,$symbol);
+if (!isset($this->symbols[$key])) return false;
+return $this->export_entry($this->symbols[$key]);
+}
+
+//---
 // Return an array without keys (keys are kept private and may change in the future)
 // The returned path is an absolute path.
 
@@ -711,26 +733,17 @@ public function symbols()
 $this->check_valid();
 
 $ret=array();
+foreach($this->symbols as $entry) $ret[]=$this->export_entry($entry);
 
-foreach($this->symbols as $entry)
-	{
-	$re=array();
-	$re['stype']=$entry['T'];
-	$re['symbol']=$entry['n'];
-	$re['ptype']=$entry['t'];
-	$re['rpath']=$entry['p'];
-	$re['path']=$this->abs_path($entry);
-	$ret[]=$re;
-	}
 return $ret;
 }
 
 //---
 
-private function call_success_handlers($entry,$path)
+private function call_success_handlers($entry)
 {
 foreach (self::$success_handlers as $callable)
-	$callable($this,$entry['T'],$entry['n'],$entry['t'],$path);
+	$callable($entry['T'],$entry['n'],$this);
 }
 
 //---
@@ -766,13 +779,13 @@ switch($ftype)
 	{
 	case self::F_EXTENSION:
 		if (!dl($path)) return false;
-		$this->call_success_handlers($entry,$path);
+		$this->call_success_handlers($entry);
 		break;
 
 	case self::F_SCRIPT:
 		//echo "Loading script file : $path\n";//TRACE
 		{ require($path); }
-		$this->call_success_handlers($entry,$path);
+		$this->call_success_handlers($entry);
 		break;
 
 	case self::F_PACKAGE:

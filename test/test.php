@@ -137,6 +137,8 @@ foreach ($syms as $sym)
 
 $t->check('check() returns 0 errors',Automap_Tools::check($map1)===0);
 
+$t->check('get_symbol() returns false on non existing symbol',$map1->get_symbol(Automap::T_CLASS,'nosuchclass')===false);
+
 //---------------------------------
 $t->start('Explicit get methods');
 
@@ -193,16 +195,23 @@ $t->start('Success handler');
 
 //------
 
-function success_func($map,$stype,$sname,$ftype,$path)
+function success_func($stype,$sname,$map)
 {
 $t=$GLOBALS['t'];
 
-$t->check('Handler receives a valid map',$map->symbol_count()===MAP1_SYMCOUNT);
+$t->check('Handler receives the right map',$map->symbol_count()===MAP1_SYMCOUNT);
 $t->check('Handler receives the right symbol type',$stype===Automap::T_CLASS);
 $t->check('Handler receives the right symbol name',$sname==='c14');
-$t->check('Handler receives the right file type',$ftype===Automap::F_SCRIPT);
-$t->check('Handler receives the right path'
-	,file_exists($path)&&basename($path)==='file14.php');
+
+$sym=$map->get_symbol($stype,$sname);
+
+$t->check('Success handler: get_symbol(): returned element is array',is_array($sym));
+$t->check('Success handler: get_symbol() returns correct symbol type',$sym['stype']===Automap::T_CLASS);
+$t->check('Success handler: get_symbol() returns correct symbol name',$sym['symbol']==='c14');
+$t->check('Success handler: get_symbol() returns correct path type',$sym['ptype']===Automap::F_SCRIPT);
+$t->check('Success handler: get_symbol(): returned correct relative path',$sym['rpath']==='src1/file14.php');
+$t->check('Success handler: get_symbol(): checking file existence (absolute path)',file_exists($sym['path']));
+$t->check('Success handler: get_symbol(): checking file existence (relative path)',file_exists($sym['rpath']));
 
 $GLOBALS['success_handler_called']=true;
 }
