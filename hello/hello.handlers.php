@@ -7,28 +7,25 @@ if (!class_exists('\Automap',false)) require('Automap.phk');
 
 //---------------------------
 
-function fail($key)
+function fail($type,$symbol)
 {
-echo "Automap could not find "
-	.\Automap::get_type_string(\Automap::get_type_from_key($key))
-	.' '
-	.\Automap::get_symbol_from_key($key)
-	."\n";
+echo "Automap could not find ".$symbol.' '.\Automap::type_to_string($type)."\n";
 }
 
 //---------------------------
 
-function succeed($key,$mnt,$value)
+function succeed($type,$symbol,$map)
 {
+$v=$map->get_symbol($type,$symbol);
+
 echo "Automap loaded "
-	.\Automap::get_type_string(\Automap::get_type_from_key($key))
+	.\Automap::type_to_string($type)
 	.' '
-	.\Automap::get_symbol_from_key($key)
+	.$symbol
 	.' from '
-	.\Automap::get_type_string(\Automap::get_type_from_key($value))
+	.\Automap::type_to_string($v['ptype'])
 	.' '
-	.\Automap::instance($mnt)->base_dir()
-	.\Automap::get_symbol_from_key($value)
+	.$v['path']
 	."\n";
 }
 
