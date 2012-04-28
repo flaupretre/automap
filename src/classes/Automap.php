@@ -41,7 +41,7 @@ if (!class_exists('Automap',false))
 class Automap
 {
 const VERSION='2.0.0';
-const MIN_MAP_VERSION='2.0.0'; // Cannot load maps older than this version
+const MIN_MAP_VERSION='1.1.0'; // Cannot load maps older than this version
 
 const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
 
@@ -517,8 +517,8 @@ private $symbols=null;	// array($key => array('T' => <symbol type>
 						// , 'n' => <case-sensitive symbol name>
 						// , 't' => <target type>, 'p' => <target path>))
 private $options=null;	// array()
-private $version;
-private $min_version;
+private $version;		// The version of the Automap_Creator that created the map
+private $min_version;	// The minimum runtime version able to understand the map file
 private $valid;			// True if the instance is valid (still mounted)
 
 //-----
@@ -579,8 +579,11 @@ if (version_compare($this->min_version,self::VERSION) > 0)
 		' Requires at least Automap version '.$this->min_version);
 
 $this->version=trim(substr($buf,30,12));
+if (strlen($this->version)<1)
+	throw new Exception('Invalid empty map version');
 if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
 	throw new Exception('Cannot understand this map. Format too old.');
+$map_major_version=(int)($this->version{0});
 
 if (strlen($buf)!=($sz=(int)substr($buf,45,8)))		// Check file size
 	throw new Exception('Invalid file size. Should be '.$sz);
@@ -600,16 +603,29 @@ if (!is_array($bsymbols=$buf['map']))
 	throw new Exception('Symbol table should contain an array');
 $this->symbols=array();
 
-foreach($bsymbols as $str)
+foreach($bsymbols as $bkey => $bval)
 	{
-	if (strlen($str)<5) throw new Exception("Invalid value string: <$str>");
 	$a=array();
-	$a['T']=$str{0};
-	$a['t']=$str{1};
-	$ta=explode('|',substr($str,2));
-	if (count($ta)<2) throw new Exception("Invalid value string: <$str>");
-	$a['n']=$ta[0];
-	$a['p']=$ta[1];
+	switch($map_major_version)
+		{
+		case 1:
+			if ((strlen($bkey)<2)||(strlen($bval)<2))
+				throw new Exception('Invalid entry');
+			$a['T']=$bkey{0};
+			$a['n']=substr($bkey,1);
+			$a['t']=$bval{0};
+			$a['p']=substr($bval,1);
+			break;
+		default:
+			if (strlen($bval)<5) throw new Exception("Invalid value string: <$bval>");
+			$a['T']=$bval{0};
+			$a['t']=$bval{1};
+			$ta=explode('|',substr($bval,2));
+			if (count($ta)<2) throw new Exception("Invalid value string: <$bval>");
+			$a['n']=$ta[0];
+			$a['p']=$ta[1];
+			break;
+		}
 	$key=self::key($a['T'],$a['n']);
 	$this->symbols[$key]=$a;
 	}
