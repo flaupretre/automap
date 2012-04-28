@@ -43,7 +43,7 @@ class Automap_Tools // Static only
 //---
 // Returns the number of errors found
 
-public function check(Automap $map)
+public static function check(Automap $map)
 {
 $checked_packages=array();
 
