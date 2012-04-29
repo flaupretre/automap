@@ -1,5 +1,5 @@
 <?php
 
-const CONST11='whoyougonnacall?';
+define('CONST11','whoyougonnacall?');
 
 ?>
