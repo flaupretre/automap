@@ -96,7 +96,7 @@ return $c;
 //---------
 // Display the content of a map (text or HTML depending on the current context)
 
-public function show($map,$subfile_to_url_function=null)
+public static function show($map,$subfile_to_url_function=null)
 {
 if ($html=PHK_Util::is_web()) self::show_html($map,$subfile_to_url_function);
 else self::show_text($map,$subfile_to_url_function);
@@ -104,7 +104,7 @@ else self::show_text($map,$subfile_to_url_function);
 
 //---------
 
-public function show_text($map,$subfile_to_url_function=null)
+public static function show_text($map,$subfile_to_url_function=null)
 {
 echo "\n* Global information :\n\n";
 echo '	Map version : '.$map->version()."\n";
@@ -151,7 +151,7 @@ foreach($map->symbols() as $s)
 //---
 // The same in HTML
 
-private function show_html($map,$subfile_to_url_function=null)
+private static function show_html($map,$subfile_to_url_function=null)
 {
 echo "<h2>Global information</h2>";
 
@@ -188,7 +188,7 @@ echo '</table>';
 
 //---
 
-public function export($map,$path=null)
+public static function export($map,$path=null)
 {
 $file=(is_null($path) ? "php://stdout" : $path);
 $fp=fopen($file,'w');
