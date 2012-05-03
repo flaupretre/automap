@@ -22,7 +22,7 @@ $t->check('include() returns NULL',is_string($res));
 //---------------------------------
 $t->start('Mount maps');
 
-$mnt1=Automap::mount(MAP1);
+$mnt1=Automap::load(MAP1);
 $t->check('mount() returns string (1)',is_string($mnt1));
 
 $map1=Automap::instance($mnt1);
@@ -61,7 +61,7 @@ $t->check('validate(<wrong string>) throws exceptions', $ex);
 //---------------------------------
 $t->start('Mount/umount');
 
-Automap::umount($mnt1);
+Automap::unload($mnt1);
 
 $t->check('is_mounted() false on umounted ID',!Automap::is_mounted($mnt1));
 $t->check('Unmounted instance is not valid',!$map1->is_valid());

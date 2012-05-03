@@ -381,6 +381,14 @@ return $mnt;
 }
 
 //---------------------------------
+// mount() alias
+
+public static function load($path,$base_dir=null,$mnt=null,$flags=0)
+{
+return self::mount($path,$base_dir,$mnt,$flags);
+}
+
+//---------------------------------
 /**
 * Umounts a mounted map.
 *
@@ -407,6 +415,14 @@ if (self::is_mounted($mnt))
 	$map->invalidate();
 	unset(self::$automaps[$mnt]);
 	}
+}
+
+//---------------------------------
+// umount() alias
+
+public static function unload($mnt)
+{
+return self::umount($mnt);
 }
 
 //---------------------------------
