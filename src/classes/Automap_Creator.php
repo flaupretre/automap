@@ -115,9 +115,9 @@ if (isset($this->symbols[$key]))
 	{
 	$entry=$this->symbols[$key];
 	echo "** Warning: Symbol multiply defined: ".Automap::type_to_string($va['T'])
-		.' '.$va['n']."\n	Previous location: ".Automap::type_to_string($va['t'])
-		.' '.$va['p']."\n	New location: ".Automap::type_to_string($entry['t'])
-		.' '.$entry['n']."\n** Ignoring new definition\n";
+		.' '.$va['n']."\n	Previous location: ".Automap::type_to_string($entry['t'])
+		.' '.$entry['p']."\n	New location (ignored): ".Automap::type_to_string($va['t'])
+		.' '.$va['p']."\n";
 	}
 else $this->symbols[$key]=$va;
 }
@@ -686,12 +686,13 @@ $mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
 
 if (Automap::is_mounted($mnt)) // If package has an automap
 	{
-	foreach(Automap::instance($mnt)->symbols() as $key => $va)
+	foreach(Automap::instance($mnt)->symbols() as $sym)
 		{
 		//var_dump($key);//TRACE
+		$va=array();
 		$va['t']=Automap::F_PACKAGE;
 		$va['p']=$rpath;
-		$this->add_entry($va);
+		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);
 		}
 	}
 }
