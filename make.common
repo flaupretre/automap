@@ -74,25 +74,29 @@ kit:
 
 #------ API Documentation
 
-$(PRODUCT)_api.phk: $(PRODUCT)_api.psf
+$(PRODUCT)_api.phk: $(PRODUCT)_api.psf $(PHK_CREATOR)
 	/bin/rm -rf $(TMP_DIR)
 	mkdir $(TMP_DIR)
-	$(PHPDOC) -o HTML:frames:DOM/earthli -d $(FILTER_SOURCE) \
-		-t $(TMP_DIR) -ti "$(PRODUCT) API"
+	$(PHPDOC) --help | head -1 | grep 'version 2' >/dev/null ;\
+	if [ $$? = 0 ] ; then opts='-q --title $(PRODUCT)' ;\
+	else opts='-o HTML:frames:DOM/earthli -ti "$(PRODUCT) API"' ; fi;\
+	$(PHPDOC) $$opts -d $(FILTER_SOURCE) -t $(TMP_DIR) 
 	SOURCE_DIR=$(SOURCE_DIR) TMP_DIR=$(TMP_DIR) $(PHP) $(PHK_CREATOR) build $@ $(PRODUCT)_api.psf
 	/bin/rm -rf $(TMP_DIR)
+
+# Generating a PDF documentation is available in phpdoc V 1 only
 
 $(PRODUCT)_api.pdf: $(PRODUCT)_api.psf
 	/bin/rm -rf $(TMP_DIR)
 	mkdir $(TMP_DIR)
 	$(PHPDOC) -o PDF:default:default -d $(FILTER_SOURCE) \
-		-t $(TMP_DIR) -ti "$(PRODUCT) Cross Reference"
+		-t $(TMP_DIR) -ti "$(PRODUCT) API"
 	mv $(TMP_DIR)/documentation.pdf $@
 	/bin/rm -rf $(TMP_DIR)
 
 #------ Cross Reference
 
-$(PRODUCT)_xref.phk: $(PRODUCT)_xref.psf $(PRODUCT)_xref.cfg
+$(PRODUCT)_xref.phk: $(PRODUCT)_xref.psf $(PRODUCT)_xref.cfg $(PHK_CREATOR)
 	/bin/rm -rf $(TMP_DIR)
 	mkdir $(TMP_DIR)
 	PHPXREF_DIR=$(PHPXREF_DIR) INPUT=$(FILTER_SOURCE) OUTPUT=$(TMP_DIR) \
