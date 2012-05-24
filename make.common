@@ -79,7 +79,7 @@ $(PRODUCT)_api.phk: $(PRODUCT)_api.psf $(PHK_CREATOR)
 	mkdir $(TMP_DIR)
 	$(PHPDOC) --help | head -1 | grep 'version 2' >/dev/null ;\
 	if [ $$? = 0 ] ; then opts='-q --title $(PRODUCT)' ;\
-	else opts='-o HTML:frames:DOM/earthli -ti "$(PRODUCT) API"' ; fi;\
+	else opts='-o HTML:frames:DOM/earthli -ti $(PRODUCT)' ; fi;\
 	$(PHPDOC) $$opts -d $(FILTER_SOURCE) -t $(TMP_DIR) 
 	SOURCE_DIR=$(SOURCE_DIR) TMP_DIR=$(TMP_DIR) $(PHP) $(PHK_CREATOR) build $@ $(PRODUCT)_api.psf
 	/bin/rm -rf $(TMP_DIR)
