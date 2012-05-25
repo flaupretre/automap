@@ -9,22 +9,18 @@ add /etc/& $(PSF_DIR)/src/etc/license.htm
 add /etc/& $(PSF_DIR)/src/etc/license.txt
 
 #-- The options
-
 %options
 
-return array(
-	'name' => 'Automap Cross reference',
-	'version' => '1.1',
-	'release' => '0',
-	'license' => 'Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>',
-	'copyright' => '(c) F. Laupretre',
-	'author' => 'F. Laupretre <mailto:phk@tekwire.net>',
-	'url' => 'http://phk.tekwire.net',
-	'packager' => 'F. Laupretre <mailto:phk@tekwire.net>',
-	'license_prefix' => '/etc/license',
-	'web_run_script' => '/index.html',
-	'web_access' => '/',		//-- Open access
-	'web_main_redirect' => true
-	);
+name              : Automap Cross reference
+version           : 2.0
+release           : 0
+copyright         : (c) F. Laupretre
+author            : F. Laupretre <mailto:francois@tekwire.net>
+url               : http://automap.tekwire.net
+packager          : F. Laupretre <mailto:francois@tekwire.net>
+web_run_script    : /index.html
+web_access        : /		#-- Open access
+web_main_redirect : true
+license_prefix    : /etc/license
 
 #----------------

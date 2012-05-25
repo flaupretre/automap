@@ -4,20 +4,15 @@
 merge -strip=true -compress=gzip / $(TMP_DIR)
 
 #-- The options
-
 %options
 
-return array(
-	'name' => 'Automap API reference',
-	'version' => '1.1',
-	'release' => '0',
-	'copyright' => '(c) F. Laupretre - Internal use',
-	'author' => 'F. Laupretre <mailto:phk@tekwire.net>',
-	'url' => 'http://phk.tekwire.net',
-	'packager' => 'F. Laupretre <mailto:phk@tekwire.net>',
-	'web_run_script' => '/index.html',
-	'web_access' => '/',		//-- Open access
-	'web_main_redirect' => true
-	);
-
-#----------------
+name              : Automap API reference
+version           : 2.0
+release           : 0
+copyright         : (c) F. Laupretre
+author            : F. Laupretre <mailto:francois@tekwire.net>
+url               : http://automap.tekwire.net
+packager          : F. Laupretre <mailto:francois@tekwire.net>
+web_run_script    : /index.html
+web_access        : /		#-- Open access
+web_main_redirect : true
