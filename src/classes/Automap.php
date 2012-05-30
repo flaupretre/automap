@@ -839,6 +839,42 @@ return true;
 }
 
 //---
+// Proxies to Automap_Tools methods.
+
+public function check()
+{
+return Automap_Tools::check($this);
+}
+
+//---
+
+public function show($subfile_to_url_function=null))
+{
+return Automap_Tools::show($this,$subfile_to_url_function);
+}
+
+//---
+
+public function show_text($subfile_to_url_function=null))
+{
+return Automap_Tools::show_text($this,$subfile_to_url_function);
+}
+
+//---
+
+public function show_html($subfile_to_url_function=null))
+{
+return Automap_Tools::show_html($this,$subfile_to_url_function);
+}
+
+//---
+
+public function export($path=null))
+{
+return Automap_Tools::export($this,$path);
+}
+
+//---
 } // End of class Automap
 //===========================================================================
 
