@@ -19,7 +19,7 @@ author            : F. Laupretre <mailto:francois@tekwire.net>
 url               : http://automap.tekwire.net
 packager          : F. Laupretre <mailto:francois@tekwire.net>
 web_run_script    : /index.html
-web_access        : /		#-- Open access
+web_access        : /  #-- Open access
 web_main_redirect : true
 license_prefix    : /etc/license
 
