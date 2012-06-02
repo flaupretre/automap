@@ -12,7 +12,7 @@ add /etc/& $(PSF_DIR)/src/etc/license.txt
 %options
 
 name              : Automap Cross reference
-version           : 2.0
+version           : '2.0'
 release           : 0
 copyright         : (c) F. Laupretre
 author            : F. Laupretre <mailto:francois@tekwire.net>
