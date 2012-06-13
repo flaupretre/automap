@@ -45,7 +45,7 @@ if (!class_exists('Automap_Creator',false))
 
 class Automap_Creator
 {
-const VERSION='2.0.0';		// Version set into the maps I produce
+const VERSION='2.1.0';		// Version set into the maps I produce
 const MIN_VERSION='2.0.0'; // Minimum version of runtime to understand the maps I produce
 
 //---------

@@ -40,7 +40,7 @@ if (!class_exists('Automap',false))
 
 class Automap
 {
-const VERSION='2.0.0';
+const VERSION='2.1.0';
 const MIN_MAP_VERSION='1.1.0'; // Cannot load maps older than this version
 
 const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
