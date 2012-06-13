@@ -111,8 +111,9 @@ echo '	Map version : '.$map->version()."\n";
 echo '	Min reader version : '.$map->min_version()."\n";
 echo '	Symbol count : '.$map->symbol_count()."\n";
 
-echo "\n* Options :\n\n";
-print_r($map->options());
+//As long as options are not used, don't display an empty array
+//echo "\n* Options :\n\n";
+//print_r($map->options());
 
 echo "\n* Symbols :\n\n";
 
@@ -164,8 +165,9 @@ echo '<tr><td>Symbol count:&nbsp;</td><td>'
 	.$map->symbol_count().'</td></tr>';
 echo '</table>';
 
-echo "<h2>Options</h2>";
-echo '<pre>'.htmlspecialchars(print_r($map->options(),true)).'</pre>';
+//As long as options are not used, don't display an empty array
+//echo "<h2>Options</h2>";
+//echo '<pre>'.htmlspecialchars(print_r($map->options(),true)).'</pre>';
 
 echo "<h2>Symbols</h2>";
 
