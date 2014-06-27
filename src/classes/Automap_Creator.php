@@ -58,27 +58,6 @@ private $flags;
 private $path=null;
 
 //---------
-// Utilities (taken from PHK_Util)
-
-private static function atomic_write($path,$data)
-{
-$tmpf=tempnam(dirname($path),'tmp_');
-
-if (file_put_contents($tmpf,$data)!=strlen($data))
-	throw new Exception($tmpf.": Cannot write");
-
-// Windows does not support renaming to an existing file (looses atomicity)
-
-if (PHK_Util::is_windows()) @unlink($path);
-
-if (!rename($tmpf,$path))
-	{
-	unlink($tmpf);
-	throw new Exception($path.': Cannot replace file');
-	}
-}
-
-//---------
 // Creates an empty object
 
 public function __construct($path=null,$flags=0)
@@ -184,7 +163,7 @@ if (is_null($path)) throw new Exception('No path provided');
 
 $data=$this->serialize();
 
-self::atomic_write($path,$data);
+PHK_Util::atomic_write($path,$data);
 }
 
 //---------
