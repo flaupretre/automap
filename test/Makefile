@@ -26,10 +26,4 @@ mem_check: all
 	valgrind --tool=memcheck --log-file=php.log --leak-check=full \
 		--track-origins=yes $(PHP) test.php
 
-install:
-# Do nothing
-
-doc:
-# Do nothing
-
 #-----------------------------------------------------------------------------
