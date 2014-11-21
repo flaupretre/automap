@@ -482,7 +482,7 @@ foreach(token_get_all($buf) as $token)
 			
 
 		case self::ST_FUNCTION_FOUND:
-			if (($state==self::ST_FUNCTION_FOUND)&&($tnum==-1)&&($tvalue=='('))
+			if (($tnum==-1)&&($tvalue=='('))
 				{ // Closure : Ignore (no function name to get here)
 				$state=self::ST_OUT;
 				break;
@@ -652,33 +652,27 @@ foreach($map->symbols() as $va)
 }
 
 //---------
+// Register a PHK package
+//
+// Note that the load ID of a package and its map are the same
 
 public function register_phk($fpath,$rpath)
 {
 $rpath=self::normalize_rpath($rpath);
-
-$this->cleanup(self::mk_varray(Automap::F_PACKAGE,$rpath));
-
-// We use the same mount point for packages and automaps
+$va=self::mk_varray(Automap::F_PACKAGE,$rpath);
+$this->cleanup($va);
 
 $mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
-
 if (Automap::is_mounted($mnt)) // If package has an automap
 	{
 	foreach(Automap::instance($mnt)->symbols() as $sym)
-		{
-		//var_dump($key);//TRACE
-		$va=array();
-		$va['t']=Automap::F_PACKAGE;
-		$va['p']=$rpath;
 		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);
-		}
 	}
 }
 
 //---------
 
-public function import($path)
+public function import($path=null)
 {
 $fp=is_null($path) ? STDIN : fopen($path,'r');
 
