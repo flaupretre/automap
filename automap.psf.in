@@ -1,12 +1,13 @@
 
 merge / $(PSF_DIR)/src
 
-%options ---------------------------------------------------------------------
+#---------------------------------------------------------------------
+%options
 
 name           : Automap
 summary        : Automap Runtime and Creator tool
-version        : '2.1'
-release        : 0
+version        : '@SOFTWARE_VERSION@'
+release        : '@SOFTWARE_RELEASE@'
 crc_check      : true
 license        : Apache License Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>
 copyright      : (c) F. Laupretre

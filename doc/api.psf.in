@@ -1,19 +1,14 @@
 
 #-- Documentation files
 
-merge -compress=gzip / $(TMP_DIR)
-
-#-- The icons
-
-add /etc/& $(PSF_DIR)/src/etc/license.htm
-add /etc/& $(PSF_DIR)/src/etc/license.txt
+merge -strip=true -compress=gzip / $(1)
 
 #-- The options
 %options
 
-name              : Automap Cross reference
-version           : '2.1'
-release           : 0
+name              : Automap API reference
+version           : '@SOFTWARE_VERSION@'
+release           : '@SOFTWARE_RELEASE@'
 copyright         : (c) F. Laupretre
 author            : F. Laupretre <mailto:francois@tekwire.net>
 url               : http://automap.tekwire.net
@@ -21,6 +16,3 @@ packager          : F. Laupretre <mailto:francois@tekwire.net>
 web_run_script    : /index.html
 web_access        : /  #-- Open access
 web_main_redirect : true
-license_prefix    : /etc/license
-
-#----------------
