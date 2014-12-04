@@ -19,11 +19,15 @@
 
 ini_set('display_errors',true);
 
-//require_once(dirname(__FILE__).'/../classes/Automap_Cmd.php');
+// <PHK:ignore>
+require(dirname(__FILE__).'/../classes/Automap_Cmd.php');
+// <PHK:end>
 
 try
 {
-Automap_Cmd::run($_SERVER['argv']);
+$args=$_SERVER['argv'];
+array_shift($args);
+Automap_Cmd::run($args);
 }
 catch(Exception $e)
 	{
