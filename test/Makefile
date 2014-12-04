@@ -14,10 +14,10 @@ clean:
 	/bin/rm -f $(TARGETS) php.log
 
 auto1.map :
-	$(PHP) ../Automap.phk register auto1.map . src1
+	$(PHP) ../automap.phk register -m auto1.map src1
 	
 auto2.map :
-	$(PHP) ../Automap.phk register auto2.map . src2
+	$(PHP) ../automap.phk register -m auto2.map src2
 
 check: all
 	$(PHP) test.php

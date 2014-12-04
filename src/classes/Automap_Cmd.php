@@ -27,9 +27,12 @@
 */
 //============================================================================
 
-// <PLAIN_FILE> //---------------
+// <PHK:ignore>
+require_once(dirname(__FILE__).'/external/phool/PHO_Display.php');
+require_once(dirname(__FILE__).'/external/phool/PHO_File.php');
+require_once(dirname(__FILE__).'/Automap_Cmd_Options.php');
 require_once(dirname(__FILE__).'/Automap_Creator.php');
-// </PLAIN_FILE> //---------------
+// <PHK:end>
 
 class Automap_Cmd
 {
@@ -45,50 +48,77 @@ throw new Exception($msg);
 
 private static function usage()
 {
-echo "\nUsage: <action> <params...>\n\n";
-echo "Actions :\n";
-echo "    - show <map file>\n";
-echo "    - check <map file> [<base dir>]\n";
-echo "    - export <map file> [<output file>]\n";
+echo "
+Available commands :
 
-if (class_exists('Automap_Creator',1))
-	{
-	echo "    - register_extensions <map file> (execute using 'php -n -d extension_dir=<dir>'\n";
-	echo "    - register <map file> <base dir> <relative file paths...>\n";
-	echo "    - merge <target map> <relative path> <source maps...>\n";
-	echo "    - import <map file> [<source file>]\n";
-	}
+  - register [-a] [-b <base_path>] <relative paths...>
+        Scans PHP scripts and builds a map. The relative paths can reference
+        regular files and/or directories. Directories are scanned recursively
+        and every PHP scripts they contain are scanned.
+        Options :
+            -a : If the map file exists, add symbols without recreating it
+            -b <base_path> : Specifies a base path. If relative, the reference
+                             is the map file directory.
 
-echo "    - help\n\n";
-echo "Please consult the Automap website (http://automap.tekwire.net) for more.\n\n";
+  - show [-f {auto|html|text}]
+        Displays the content of a map file
+        Options :
+            -f <format> : Output format. Default is 'auto'.
+
+  - check
+        Checks a map file
+
+  - export [-o <path>]
+        Exports the symbol table from a map file
+        Options :
+            -o <path> : path of file to create with exported data. Default is
+                        to write to stdout.
+
+    - import [-a] [-i <path>]
+        Import symbols from an exported file
+        Options :
+            -i <path> : path of file where data will be read. Default is to read
+                        from stdin.
+            -a : If the map file exists, add symbols without recreating it
+
+    - set_option <name> <value>
+        Sets an option in an existing map
+
+    - help
+        Display this message
+
+Global options :
+
+  -v : Increase verbose level (can be set more than once)
+  -q : Decrease verbose level (can be set more than once)
+  -m <path> : Specifies the path of the map file the command applies to. Default
+              is './auto.map'.
+
+More information at http://automap.tekwire.net\n\n";
 }
 
 //---------
 // Main
+// Options can be located before AND after the action keyword.
 
 public static function run($args)
 {
-array_shift($args);
+PHK::need_php_runtime(); // Required to use PHK_Util methods with PHK PECL
+
+Automap_Cmd_Options::get_options($args);
 $action=(count($args)) ? array_shift($args) : 'help';
-if (array_key_exists(0,$args))
-	{
-	$mapfile=$args[0];
-	array_shift($args);
-	}
-else $mapfile=null;
+Automap_Cmd_Options::get_options($args);
+$opt=Automap_Cmd_Options::options();
 
 switch($action)
 	{
 	case 'show': //-- display <map file>
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$map=Automap::instance(Automap::mount($mapfile));
-		Automap_Tools::show($map);
+		$map=Automap::instance(Automap::load($opt['map_path'],Automap::NO_AUTOLOAD));
+		$map->show($opt['format']);
 		break;
 
 	case 'check': //-- check <map file> [<base dir>]
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$base_dir=((count($args)==0) ? null : $args[0]);
-		$map=Automap::instance(Automap::mount($mapfile));
+		$map=Automap::instance(Automap::load($opt['map_path'],Automap::NO_AUTOLOAD));
 		$c=Automap_Tools::check($map);
 		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
 		break;
@@ -101,55 +131,40 @@ switch($action)
 		//-- it came from). The '-d' flag is mandatory as long as PHP cannot
 		//-- dl() outside of 'extension_dir'.
 
-		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$mf=new Automap_Creator($mapfile);
-		$mf->register_extension_dir();
-		$mf->dump();
+		$map=new Automap_Creator();
+		if (($opt['append']) && is_file($opt['map_path']))
+			$map->read_map_file($opt['map_path']);
+		$map->register_extension_dir();
+		$map->save($opt['map_path']);
 		break;
 
 	case 'register':
-		//-- register <map file> <$base> <script files (relative paths)>
-
-		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		if (count($args)==0) self::error_abort('No base dir');
-		$base=$args[0];
-		$mf=new Automap_Creator($mapfile);
-		array_shift($args);
-		if (count($args)==0) $args=array('.');
+		$map=new Automap_Creator();
+		if (($opt['append']) && is_file($opt['map_path']))
+			$map->read_map_file($opt['map_path']);
+		$abs_map_dir=PHO_File::mk_absolute_path(dirname($opt['map_path']));
+		if (!is_null($opt['base_path']))
+			$map->set_option('base_path',$opt['base_path']);
+		$abs_base=PHO_File::combine_path($abs_map_dir,$map->option('base_path'));
 		foreach($args as $rpath)
 			{
-			$abs_path=$base.DIRECTORY_SEPARATOR.$rpath;
-			$mf->register_path($abs_path,$rpath);
+			$abs_path=PHO_File::combine_path($abs_base,$rpath);
+			$map->register_path($abs_path,$rpath);
 			}
-		$mf->dump();
+		$map->save($opt['map_path']);
 		break;
 
-	case 'merge':
-		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		if (count($args)==0) self::error_abort('No relative path');
-		$rpath=$args[0];
-		$mf=new Automap_Creator($mapfile);
-		array_shift($args);
-		foreach($args as $source_path) $mf->merge_map_file($source_path,$rpath);
-		$mf->dump();
+	case 'export':
+		$map=Automap::instance(Automap::load($opt['map_path']),Automap::NO_AUTOLOAD);
+		Automap_Tools::export($map,$opt['output']);
 		break;
 
-	case 'export': //-- export <map file>
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$output=isset($args[1]) ? $args[1] : null;
-		$map=Automap::instance(Automap::mount($mapfile));
-		Automap_Tools::export($map,$output);
-		break;
-
-	case 'import': //-- import <map file>
-		if (!class_exists('Automap_Creator',1)) self::error_abort("Unknown action: '$action'");
-		if (is_null($mapfile)) self::error_abort('No mapfile');
-		$mf=new Automap_Creator($mapfile);
-		foreach($args as $rfile) $mf->import($rfile);
-		$mf->dump();
+	case 'import':
+		$map=new Automap_Creator();
+		if (($opt['append']) && is_file($opt['map_path']))
+			$map->read_map_file($opt['map_path']);
+		$map->import($opt['input']);
+		$map->save($opt['map_path']);
 		break;
 
 	case 'help':
