@@ -35,7 +35,7 @@ class Automap_Cmd_Options
 {
 
 private static $options=array(
-	'map_path' => './auto.map',
+	'map_path' => 'auto.map',
 	'base_path' => null,
 	'append' => false,
 	'output' => 'php://stdout',
