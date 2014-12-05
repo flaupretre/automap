@@ -82,6 +82,15 @@ $this->options[$option]=$value;
 
 //---------
 
+public function unset_option($option)
+{
+PHO_Display::trace("Unsetting option $option");
+
+if (isset($this->options[$option])) unset($this->options[$option]);
+}
+
+//---------
+
 private function add_entry($va)
 {
 $key=Automap::key($va['T'],$va['n']);

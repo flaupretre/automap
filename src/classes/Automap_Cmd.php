@@ -84,6 +84,9 @@ Available commands :
     - set_option <name> <value>
         Sets an option in an existing map
 
+    - unset_option <name>
+        Unsets an option in an existing map
+
     - help
         Display this message
 
@@ -112,15 +115,37 @@ $opt=Automap_Cmd_Options::options();
 
 switch($action)
 	{
-	case 'show': //-- display <map file>
+	case 'show':
 		$map=Automap::instance(Automap::load($opt['map_path'],Automap::NO_AUTOLOAD));
 		$map->show($opt['format']);
 		break;
 
-	case 'check': //-- check <map file> [<base dir>]
+	case 'check':
 		$map=Automap::instance(Automap::load($opt['map_path'],Automap::NO_AUTOLOAD));
 		$c=Automap_Tools::check($map);
 		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
+		break;
+
+	case 'set_option':
+		$mpath=$opt['map_path'];
+		if (count($args)!=2) self::error_abort('set_option requires 2 arguments');
+		list($name,$value)=$args;
+		if (!is_file($mpath)) throw new Exception("$mpath: File not found");
+		$map=new Automap_Creator();
+		$map->read_map_file($mpath);
+		$map->set_option($name,$value);
+		$map->save($mpath);
+		break;
+
+	case 'unset_option':
+		$mpath=$opt['map_path'];
+		if (count($args)!=1) self::error_abort('set_option requires 1 argument');
+		$name=array_shift($args);
+		if (!is_file($mpath)) throw new Exception("$mpath: File not found");
+		$map=new Automap_Creator();
+		$map->read_map_file($mpath);
+		$map->unset_option($name);
+		$map->save($mpath);
 		break;
 
 	case 'register_extensions':
