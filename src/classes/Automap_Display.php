@@ -72,7 +72,14 @@ echo '	Min reader version : '.$map->min_version()."\n";
 echo '	Symbol count : '.$map->symbol_count()."\n";
 
 echo "\n* Options :\n\n";
-print_r($map->options());
+
+$opts=$map->options();
+if (count($opts))
+	{
+	foreach($opts as $name => $value)
+	echo "$name: $value\n";
+	}
+else echo "<None>\n";
 
 echo "\n* Symbols :\n\n";
 
@@ -125,7 +132,19 @@ echo '<tr><td>Symbol count:&nbsp;</td><td>'
 echo '</table>';
 
 echo "<h2>Options</h2>";
-echo '<pre>'.htmlspecialchars(print_r($map->options(),true)).'</pre>';
+
+$opts=$map->options();
+if (count($opts))
+	{
+	echo '<table border=0>';
+	foreach ($opts as $name => $value)
+		{
+		echo '<tr><td>'.htmlspecialchars($name).':&nbsp;</td><td>'
+			.htmlspecialchars($value).'</td></tr>';
+		}
+	echo '</table>';
+	}
+else echo "\n<p>&lt;None&gt;</p>\n";
 
 echo "<h2>Symbols</h2>";
 
