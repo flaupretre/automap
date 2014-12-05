@@ -204,6 +204,13 @@ self::$failure_handlers[]=$callable;
 
 //--------
 
+private static function call_failure_handlers($type,$symbol)
+{
+foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
+}
+
+//--------
+
 public static function register_success_handler($callable)
 {
 self::$success_handlers[]=$callable;
@@ -323,8 +330,8 @@ return array_keys(self::$maps);
 * This function is reserved for internal operations and should never be called
 * from any user code.
 *
-* Loads a map file and returns its load ID, allowing to specify an UPID (Unique
-* Path IDentifier) and a base_path.
+* Loads a map file and returns its load ID, allowing to specify an UFID (Unique
+* File IDentifier) and a base_path.
 * This information is only used by the PECL extension when loading packages.
 *
 * @param string $path The path of the map file to load
@@ -334,7 +341,7 @@ return array_keys(self::$maps);
 * @return string map ID
 */
 
-public static function _load_internal($path,$base_path,$upid,$flags)
+public static function _load_internal($path,$base_path,$ufid,$flags)
 {
 $id=self::$load_index++;
 try
@@ -445,11 +452,11 @@ foreach(array_reverse(self::$maps) as $map)
 		return true;
 	}
 
-foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
+// Failure
 
+self::call_failure_handlers($type,$symbol);
 if ($exception) throw new Exception('Automap: Unknown '
 	.self::type_to_string($type).': '.$symbol);
-
 return false;
 }
 
@@ -738,10 +745,13 @@ switch($ftype)
 		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
 
 		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
-		$id=require($path);
+		$mnt=require($path);
 		error_reporting($errlevel);
 		// Don't call success handlers for a package (recursion)
+		$pkg=PHK_Mgr::instance($mnt);
+		$id=$pkg->map_id();
 		self::instance($id)->resolve_key($key);
+		// Don't umount the package
 		break;
 
 	default:
