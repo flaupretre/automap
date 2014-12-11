@@ -2,7 +2,7 @@
 
 include ../../make.vars
 
-TARGETS = auto.map
+TARGETS =
 
 #-----------------------------------------------------------------------------
 
@@ -11,9 +11,6 @@ TARGETS = auto.map
 all:  $(TARGETS)
 
 clean:
-	/bin/rm -f $(TARGETS)
-
-auto.map :
-	$(PHP) ../../automap.phk register src
+#	/bin/rm -f $(TARGETS)
 
 #-----------------------------------------------------------------------------
