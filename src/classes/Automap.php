@@ -40,7 +40,7 @@ if (!class_exists('Automap',false))
 
 class Automap
 {
-const VERSION='2.2.0';
+const VERSION='3.0.0';
 const MIN_MAP_VERSION='2.0.0'; // Cannot load maps older than this version
 
 const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
@@ -522,7 +522,7 @@ if (strlen($this->version)==0)
 	throw new Exception('Invalid empty map version');
 if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
 	throw new Exception('Cannot understand this map. Format too old.');
-$map_major_version=(int)($this->version{0});
+$map_major_version=$this->version{0};
 
 //-- Check file size
 
@@ -557,7 +557,8 @@ foreach($bsymbols as $bval)
 	$a=array();
 	switch($map_major_version)
 		{
-		case 2:
+		case '2':
+		case '3':
 			if (strlen($bval)<5) throw new Exception("Invalid value string: <$bval>");
 			$a['T']=$bval{0};
 			$a['t']=$bval{1};
@@ -566,6 +567,9 @@ foreach($bsymbols as $bval)
 			$a['n']=$ta[0];
 			$a['p']=$ta[1];
 			break;
+
+		default:
+			throw new Exception("Cannot understand this map version ($map_major_version)");
 		}
 	$key=self::key($a['T'],$a['n']);
 	$this->symbols[$key]=$a;
