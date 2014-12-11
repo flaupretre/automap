@@ -220,7 +220,7 @@ self::$success_handlers[]=$callable;
 
 // Combines a type and a symbol in a 'key'.
 // Note: Extension names are case insensitive
-// Unpublished. External use limited to Automap_Creator
+// Undocumented. External use limited to Automap_Creator
 
 public static function key($type,$symbol)
 {
@@ -325,28 +325,20 @@ return array_keys(self::$maps);
 
 //---------
 /**
-* Low-level map load
-*
-* This function is reserved for internal operations and should never be called
-* from any user code.
-*
-* Loads a map file and returns its load ID, allowing to specify an UFID (Unique
-* File IDentifier) and a base_path.
-* This information is only used by the PECL extension when loading packages.
+* Loads a map file and returns its ID.
 *
 * @param string $path The path of the map file to load
-* @param string|null $base_path Base path to use (absolute)
-* @param string|null $upid A unique identifier for the map file path (ignored)
 * @param integer $flags Load flags
-* @return string map ID
+* @param string $_bp Reserved for internal operations. Never set this param.
+* @return string the map ID
 */
 
-public static function _load_internal($path,$base_path,$ufid,$flags)
+public static function load($path,$flags=0,$_bp=null)
 {
 $id=self::$load_index++;
 try
 {
-$map=new self($path,$id,$base_path,$flags);
+$map=new self($path,$id,$_bp,$flags);
 }
 catch (Exception $e)
 	{
@@ -355,23 +347,6 @@ catch (Exception $e)
 
 self::$maps[$id]=$map;
 return $id;
-}
-
-//---------
-/**
-* Loads a map file and returns its ID.
-*
-* A map can be loaded more than once, which will return each time the same ID.
-* A load/unload count is maintained.
-*
-* @param string $path The path of the map file to load
-* @param integer $flags Load flags
-* @return string the map ID
-*/
-
-public static function load($path,$flags=0)
-{
-return self::_load_internal($path,null,null,$flags);
 }
 
 //---------------------------------
@@ -568,7 +543,7 @@ if (!is_array($bsymbols=$buf['map']))
 	throw new Exception('Symbol table should contain an array');
 
 //-- Compute base path
-// When set, the base_path arg is an absolute path.
+// When set, the base_path arg is an absolute path (with trailing separ)
 
 if (!is_null($base_path)) $this->base_path=$base_path;
 else $this->base_path=self::combine_path(dirname($this->path)
@@ -604,10 +579,11 @@ catch (Exception $e)
 }
 
 //-----
+// We need to use combine_path() because the registered path can be absolute
 
 private function abs_path($entry)
 {
-return $this->base_path.$entry['p'];
+return self::combine_path($this->base_path,$entry['p']);
 }
 
 //-----
@@ -636,7 +612,6 @@ $this->valid=false;
 // These utility functions return 'read-only' properties
 
 public function path() { $this->check_valid(); return $this->path; }
-public function base_path() { $this->check_valid(); return $this->base_path; }
 public function id() { $this->check_valid(); return $this->id; }
 public function flags() { $this->check_valid(); return $this->flags; }
 public function options() { $this->check_valid(); return $this->options; }
@@ -749,7 +724,7 @@ switch($ftype)
 		error_reporting($errlevel);
 		// Don't call success handlers for a package (recursion)
 		$pkg=PHK_Mgr::instance($mnt);
-		$id=$pkg->map_id();
+		$id=$pkg->automap_id();
 		self::instance($id)->resolve_key($key);
 		// Don't umount the package
 		break;
