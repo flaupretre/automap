@@ -285,7 +285,7 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 
 private static function normalize_rpath($rpath)
 {
-return trim(str_replace('\\','/',$rpath),'/\\');
+return rtrim(str_replace('\\','/',$rpath),'/\\');
 }
 
 //---------
