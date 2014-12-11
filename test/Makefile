@@ -6,7 +6,7 @@ include ../make.vars
 
 #-----------------------------------------------------------------------------
 
-.PHONY: all clean check mem_check install
+.PHONY: all clean test mem_test install
 
 all:  $(TARGETS)
 
@@ -19,10 +19,10 @@ auto1.map :
 auto2.map :
 	$(PHP) ../automap.phk register -m auto2.map src2
 
-check: all
+test: all
 	$(PHP) test.php
 
-mem_check: all
+mem_test: all
 	valgrind --tool=memcheck --log-file=php.log --leak-check=full \
 		--track-origins=yes $(PHP) test.php
 

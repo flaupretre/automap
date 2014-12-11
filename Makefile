@@ -12,7 +12,7 @@ EXPAND = build/expand.sh
 
 include ./make.vars
 
-.PHONY: all clean_doc clean doc check mem_check
+.PHONY: all clean_doc clean doc test mem_test
 
 all: $(TARGETS)
 
@@ -28,7 +28,7 @@ clean: clean_doc
 	make -C test clean
 	/bin/rm -rf $(TO_CLEAN)
 	
-check mem_check: all
+test mem_test: all
 	$(MAKE) -C test $@
 
 doc:
