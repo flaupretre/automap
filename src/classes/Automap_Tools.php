@@ -100,7 +100,7 @@ return $c;
 
 //---
 
-public static function export($map,$path=null)
+public static function export(Automap $map,$path=null)
 {
 if (is_null($path)) $path="php://stdout";
 $fp=fopen($path,'w');
