@@ -6,7 +6,7 @@ TARGETS = $(PRODUCT).phk
 SOURCE_DIR = src
 PHK_CREATE = $(PHP) $(PHK_CREATOR) build
 EXPAND = build/expand.sh
-DISTRIB=$(PRODUCT)-$(SOFTWARE_VERSION)-$(SOFTWARE_RELEASE).tar.gz
+DISTRIB=$(PRODUCT)-$(SOFTWARE_VERSION)-$(SOFTWARE_RELEASE).tgz
 TO_CLEAN = $(TARGETS) $(PRODUCT).psf $(DISTRIB) automap
 
 #-----------------------------
@@ -51,8 +51,9 @@ $(DISTRIB): $(TARGETS) doc
 
 distrib: $(DISTRIB)
 	chmod +x build/mk_distrib.sh
-	BASE=$(PWD) DISTRIB=$(DISTRIB) SOFTWARE_VERSION=$(SOFTWARE_VERSION) \
-		SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) build/mk_distrib.sh
+	BASE=$(PWD) TMP_DIR=$(TMP_DIR) PRODUCT=$(PRODUCT) \
+	SOFTWARE_VERSION=$(SOFTWARE_VERSION) \
+	SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) build/mk_distrib.sh
 
 clean_distrib:
 	/bin/rm -f $<
