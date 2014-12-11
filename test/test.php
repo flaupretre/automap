@@ -9,7 +9,7 @@ define('MAP2','auto2.map');
 
 require dirname(__FILE__).'/Tester.php';
 
-$extension_present=extension_loaded('automap');
+$extension_present=extension_loaded('phk');
 $t=$GLOBALS['t']=new Tester('Automap runtime ('.($extension_present ? 'with' : 'whithout')
 	.' PECL accelerator)');
 
@@ -46,7 +46,12 @@ $t->start('Map IDs');
 
 $t->check('$id1 is_active() is true',Automap::is_active($id1));
 
-$t->check('<bad> is not loaded()',!Automap::is_active('<bad>'));
+$t->check('1000 is not loaded()',!Automap::is_active(1000));
+
+$ex=false;
+try { @Automap::is_active('<bad>'); }
+catch (Exception $e) { $ex=true; }
+$t->check('is_active() with non-numeric arg throws exceptions', $ex);
 
 $ex=false;
 try { Automap::validate($id2); }
@@ -54,9 +59,14 @@ catch (Exception $e) { $ex=true; }
 $t->check('validate($id2) does not throw exceptions', !$ex);
 
 $ex=false;
-try { Automap::validate('no_name'); }
+try { @Automap::validate('<bad>'); }
 catch (Exception $e) { $ex=true; }
-$t->check('validate(<wrong string>) throws exceptions', $ex);
+$t->check('validate(<string>) throws exceptions', $ex);
+
+$ex=false;
+try { Automap::validate(1000); }
+catch (Exception $e) { $ex=true; }
+$t->check('validate(1000) throws exceptions', $ex);
 
 //---------------------------------
 $t->start('load/unload');
@@ -82,9 +92,14 @@ catch (Exception $e) { $ex=true; }
 $t->check('Unloading an unloaded ID does not throw exception',!$ex);
 
 $ex=false;
-try { Automap::unload('<bad>'); }
+try { Automap::unload(1000); }
 catch (Exception $e) { $ex=true; }
-$t->check('Unloading an invalid ID does not throw exception',!$ex);
+$t->check('Unloading an invalid (numeric) ID does not throw exception',!$ex);
+
+$ex=false;
+try { @Automap::unload('<bad>'); }
+catch (Exception $e) { $ex=true; }
+$t->check('Unloading an invalid (non-numeric) ID throws exception',$ex);
 
 $id1=Automap::load(MAP1);
 
@@ -101,8 +116,6 @@ $map1=Automap::instance($id1);
 $t->start('Instance methods');
 
 $t->check('Map path',$map1->path()===dirname(__FILE__).'/'.MAP1);
-
-$t->check('Base path',$map1->base_path()===dirname(__FILE__).'/');
 
 $t->check('load ID',$map1->id()===$id1);
 
