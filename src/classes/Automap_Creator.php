@@ -671,7 +671,7 @@ $this->unregister_target($va);
 $mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
 $pkg=PHK_Mgr::instance($mnt);
 $id=$pkg->automap_id();
-if (Automap::is_active($id)) // If package has an automap
+if ($id) // If package has an automap
 	{
 	foreach(Automap::instance($id)->symbols() as $sym)
 		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);

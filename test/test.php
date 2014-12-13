@@ -43,21 +43,21 @@ $t->check('min_version() returns string',is_string($map1->min_version()));
 //---------------------------------
 $t->start('Map IDs');
 
-$t->check('$id1 is_active() is true',Automap::is_active($id1));
+$t->check('$id1 id_is_active() is true',Automap::id_is_active($id1));
 
-$t->check('1000 is not loaded()',!Automap::is_active(1000));
+$t->check('1000 is not loaded()',!Automap::id_is_active(1000));
 
 $ex=false;
-try { @Automap::is_active('<bad>'); }
+try { @Automap::id_is_active('<bad>'); }
 catch (Exception $e) { $ex=true; }
-$t->check('is_active() with non-numeric arg throws exceptions', $ex);
+$t->check('id_is_active() with non-numeric arg throws exceptions', $ex);
 
 //---------------------------------
 $t->start('load/unload');
 
 Automap::unload($id1);
 
-$t->check('is_active() false on unloaded ID',!Automap::is_active($id1));
+$t->check('id_is_active() false on unloaded ID',!Automap::id_is_active($id1));
 $t->check('Unloaded instance is not valid',!$map1->is_valid());
 
 $ex=false;

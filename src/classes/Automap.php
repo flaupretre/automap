@@ -265,14 +265,14 @@ return $type;
 * @return boolean
 */
 
-public static function is_active($id)
+public static function id_is_active($id)
 {
 return isset(self::$maps[$id]);
 }
 
 //-----
 /**
-* Same as is_active() but throws an exception if the map ID is invalid
+* Same as id_is_active() but throws an exception if the map ID is invalid
 *
 * Returns the map ID so that it can be embedded in a call string.
 *
@@ -283,7 +283,7 @@ return isset(self::$maps[$id]);
 
 private static function validate($id)
 {
-if (!self::is_active($id)) throw new Exception($id.': Invalid map ID');
+if (!self::id_is_active($id)) throw new Exception($id.': Invalid map ID');
 
 return $id;
 }
@@ -357,7 +357,7 @@ return $id;
 
 public static function unload($id)
 {
-if (self::is_active($id))
+if (self::id_is_active($id))
 	{
 	$map=self::instance($id);
 	$map->invalidate();

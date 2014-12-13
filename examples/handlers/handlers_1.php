@@ -47,7 +47,7 @@ $id=Automap::load(__DIR__.'/../hello/auto.map');
 
 function check_loaded($id)
 {
-echo "Map ID $id is loaded ? ".(Automap::is_active($id) ? 'yes' : 'no')."\n";
+echo "Map ID $id is loaded ? ".(Automap::id_is_active($id) ? 'yes' : 'no')."\n";
 }
 
 //-------
