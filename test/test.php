@@ -53,21 +53,6 @@ try { @Automap::is_active('<bad>'); }
 catch (Exception $e) { $ex=true; }
 $t->check('is_active() with non-numeric arg throws exceptions', $ex);
 
-$ex=false;
-try { Automap::validate($id2); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate($id2) does not throw exceptions', !$ex);
-
-$ex=false;
-try { @Automap::validate('<bad>'); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate(<string>) throws exceptions', $ex);
-
-$ex=false;
-try { Automap::validate(1000); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate(1000) throws exceptions', $ex);
-
 //---------------------------------
 $t->start('load/unload');
 
@@ -75,11 +60,6 @@ Automap::unload($id1);
 
 $t->check('is_active() false on unloaded ID',!Automap::is_active($id1));
 $t->check('Unloaded instance is not valid',!$map1->is_valid());
-
-$ex=false;
-try { Automap::validate($id1); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate on unloaded ID thows exception',$ex);
 
 $ex=false;
 try { $map1->options(); }

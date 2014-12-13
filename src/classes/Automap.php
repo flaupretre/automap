@@ -288,7 +288,7 @@ return isset(self::$maps[$id]);
 * @throws Exception if the ID is invalid (not loaded)
 */
 
-public static function validate($id)
+private static function validate($id)
 {
 if (!self::is_active($id)) throw new Exception($id.': Invalid map ID');
 
