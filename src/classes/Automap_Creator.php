@@ -669,9 +669,11 @@ $va=self::mk_varray(Automap::F_PACKAGE,$rpath);
 $this->unregister_target($va);
 
 $mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
-if (Automap::is_active($mnt)) // If package has an automap
+$pkg=PHK_Mgr::instance($mnt);
+$id=$pkg->automap_id();
+if (Automap::is_active($id)) // If package has an automap
 	{
-	foreach(Automap::instance($mnt)->symbols() as $sym)
+	foreach(Automap::instance($id)->symbols() as $sym)
 		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);
 	}
 }
