@@ -39,7 +39,6 @@ $t->start('Versions');
 
 $t->check('version() returns string',is_string($map1->version()));
 $t->check('min_version() returns string',is_string($map1->min_version()));
-$t->check('min_map_version() returns string',is_string($map1->min_map_version()));
 
 //---------------------------------
 $t->start('Map IDs');

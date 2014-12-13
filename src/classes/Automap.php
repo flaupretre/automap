@@ -175,13 +175,6 @@ return self::trailing_separ($path,$separ);
 //================== Map manager (static methods) =======================
 
 //--------------
-
-public static function min_map_version()
-{
-return self::MIN_MAP_VERSION;
-}
-
-//--------------
 // Undocumented - Internal use only
 
 public static function init()
