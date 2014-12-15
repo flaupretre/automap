@@ -28,33 +28,56 @@
 
 if (!class_exists('Automap',false)) 
 {
-//------------------------------------------
+//===========================================================================
 /**
 * Automap runtime class
 *
 * This class allows to autoload PHP scripts and extensions by extension,
 * constant, class, or function name.
 *
+* Static methods use map IDs. A map ID is a non null positive number, uniquely
+* identifying a loaded map.
+*
 * @package Automap
 */
+//===========================================================================
 
 class Automap
 {
+/** Class version */
+
 const VERSION='3.0.0';
-const MIN_MAP_VERSION='2.0.0'; // Cannot load maps older than this version
+
+/** Cannot load maps older than this version */
+ 
+const MIN_MAP_VERSION='3.0.0';
+
+/** Map files start with this string */
 
 const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
 
-//---------
+/** Symbol types */
 
-const T_FUNCTION='F';	// Symbol types
+const T_FUNCTION='F';
 const T_CONSTANT='C';
 const T_CLASS='L';
 const T_EXTENSION='E';
 
-const F_SCRIPT='S';		// Target types
+/** Target types */
+
+const F_SCRIPT='S';
 const F_EXTENSION='X';
 const F_PACKAGE='P';
+
+/** Load flags */
+
+// Autoloader ignores maps loaded with this flag */
+
+const NO_AUTOLOAD=1;
+
+/** @var array Fixed value array containing a readable string for each
+*              symbol/target type
+*/
 
 private static $type_strings=array(
 	self::T_FUNCTION	=> 'function',
@@ -66,31 +89,33 @@ private static $type_strings=array(
 	self::F_PACKAGE		=> 'package'
 	);
 
-//-- Load flags
-
-const NO_AUTOLOAD=1;	// Don't use this map for autoloading
-
-//-- Private properties
+/** @var array(callables) Registered failure handlers */
 
 private static $failure_handlers=array();
 
+/** @var array(callables) Registered success handlers */
+
 private static $success_handlers=array();
 
-private static $support_constant_autoload; // whether the PHP engine is able to
-private static $support_function_autoload; // autoload functions/constants
+/** @var bool Whether the PHP engine is able to autoload constants */
 
-//---------
-// This array contains the active maps
-// Key=<map ID> ; Value=Automap instance
+private static $support_constant_autoload; // 
+
+/** @var bool Whether the PHP engine is able to autoload functions */
+
+private static $support_function_autoload; // 
+
+/** @var array(<map ID> => <map instance>) Array of active maps */
 
 private static $maps=array();
 
-private static $load_index=1; // The map ID of the next map load
+/** The map ID of the next map load */
+
+private static $load_index=1;
 
 //============ Utilities (taken from external libs) ============
 
-//---------------------------------
-// Taken from PHO_File
+//----- Taken from PHO_File
 /**
 * Combines a base path with another path
 *
@@ -119,8 +144,7 @@ else	//-- Relative path : combine it to base
 return self::trailing_separ($res,$separ);
 }
 
-//---------------------------------
-// Taken from PHO_File
+//----- Taken from PHO_File
 /**
 * Adds or removes a trailing separator in a path
 *
@@ -137,8 +161,7 @@ if ($separ) $path=$path.'/';
 return $path;
 }
 
-//---------------------------------
-// Taken from PHO_File
+//----- Taken from PHO_File
 /**
 * Determines if a given path is absolute or relative
 *
@@ -153,8 +176,7 @@ return ((strpos($path,':')!==false)
 	||(strpos($path,'\\')===0));
 }
 
-//---------------------------------
-// Taken from PHO_File
+//----- Taken from PHO_File
 /**
 * Build an absolute path from a given (absolute or relative) path
 *
@@ -175,7 +197,9 @@ return self::trailing_separ($path,$separ);
 //================== Map manager (static methods) =======================
 
 //--------------
-// Undocumented - Internal use only
+/**
+* Undocumented - Internal use only
+*/
 
 public static function init()
 {
@@ -188,21 +212,64 @@ $f=new ReflectionFunction('defined');
 self::$support_constant_autoload=($f->getNumberOfParameters()==2);
 }
 
-//-------- User handlers -----------
+//=============== User handlers ===============
+
+/**
+* Register a failure handler
+*
+* Once registered, the failure handler is called each time a symbol resolution
+* fails.
+*
+* There is no limit on the number of failure handlers that can be registered.
+*
+* Handlers cannot be unregistered.
+*
+* @param callable $callable
+* @return null
+*/
 
 public static function register_failure_handler($callable)
 {
 self::$failure_handlers[]=$callable;
 }
 
-//--------
+//--------------
+/**
+* Call every registered failure handlers
+*
+* Call provides two arguments : the symbol type (one of the 'T_' constants)
+* and the symbol name.
+*
+* Handlers are called in registration order.
+*
+* @param string $type one of the 'T_' constants
+* @param string $symbol The symbol name
+* @return null
+*/
 
 private static function call_failure_handlers($type,$symbol)
 {
 foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
 }
 
-//--------
+//--------------
+/**
+/**
+* Register a success handler
+*
+* Once registered, the failure handler is called each time a symbol resolution
+* succeeds.
+*
+* The success handler receives two arguments : An array as returned by the
+* get_symbol() method, and the map object where the symbol was found.
+*
+* There is no limit on the number of success handlers that can be registered.
+*
+* Handlers cannot be unregistered.
+*
+* @param callable $callable
+* @return null
+*/
 
 public static function register_success_handler($callable)
 {
@@ -210,10 +277,18 @@ self::$success_handlers[]=$callable;
 }
 
 //-------- Key management -----------
-
-// Combines a type and a symbol in a 'key'.
-// Note: Extension names are case insensitive
-// Undocumented. External use limited to Automap_Creator
+/*
+* Combines a type and a symbol in a 'key'
+*
+* Extension names, functions, classes, and namespaces are case insensitive.
+* Constants are case sensitive.
+*
+* Do not use: public access reserved for Automap_Creator
+*
+* @param string $type one of the 'T_' constants
+* @param string $symbol The symbol value (case sensitive)
+* @return string Symbol key
+*/
 
 public static function key($type,$symbol)
 {
@@ -267,6 +342,7 @@ return $type;
 
 public static function id_is_active($id)
 {
+if (!is_numeric($id)) throw new Exception($id."Invalid map ID");
 return isset(self::$maps[$id]);
 }
 
@@ -495,7 +571,7 @@ try
 if (($buf=@file_get_contents($this->path))===false)
 	throw new Exception('Cannot read map file');
 $bufsize=strlen($buf);
-if ($bufsize<54) throw new Exception("Short file (size=$bufsize)");
+if ($bufsize<62) throw new Exception("Short file (size=$bufsize)");
 
 //-- Check magic
 
@@ -522,9 +598,15 @@ $map_major_version=$this->version{0};
 if (strlen($buf)!=($sz=(int)substr($buf,45,8)))
 	throw new Exception('Invalid file size. Should be '.$sz);
 
+//-- Check CRC
+
+$crc=substr($buf,53,8);
+$buf=substr_replace($buf,'00000000',53,8);
+if ($crc!==hash('crc32',$buf)) throw new Exception('CRC error');
+	
 //-- Read data
 	
-if (($buf=unserialize(substr($buf,53)))===false)
+if (($buf=unserialize(substr($buf,61)))===false)
 	throw new Exception('Cannot unserialize data from map file');
 if (!is_array($buf))
 	throw new Exception('Map file should contain an array');
@@ -550,7 +632,6 @@ foreach($bsymbols as $bval)
 	$a=array();
 	switch($map_major_version)
 		{
-		case '2':
 		case '3':
 			if (strlen($bval)<5) throw new Exception("Invalid value string: <$bval>");
 			$a['T']=$bval{0};

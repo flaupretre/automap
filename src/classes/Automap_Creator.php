@@ -166,8 +166,10 @@ foreach($this->symbols as $key => $va)
 	}
 $data=serialize(array('map' => $bmap, 'options' => $this->options));
 
-return Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
-	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+53,8).$data;
+$buf=Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
+	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+61,8)
+	.'00000000'.$data;
+return substr_replace($buf,hash('crc32',$buf),53,8); // Insert CRC
 }
 
 //---------
