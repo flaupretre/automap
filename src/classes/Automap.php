@@ -75,6 +75,10 @@ const F_PACKAGE='P';
 
 const NO_AUTOLOAD=1;
 
+// Dont't check CRC */
+
+const NO_CRC_CHECK=1;
+
 /** @var array Fixed value array containing a readable string for each
 *              symbol/target type
 */
@@ -600,10 +604,13 @@ if (strlen($buf)!=($sz=(int)substr($buf,45,8)))
 
 //-- Check CRC
 
-$crc=substr($buf,53,8);
-$buf=substr_replace($buf,'00000000',53,8);
-if ($crc!==hash('crc32',$buf)) throw new Exception('CRC error');
-	
+if (!(flags & self::NO_CRC_CHECK))
+	{
+	$crc=substr($buf,53,8);
+	$buf=substr_replace($buf,'00000000',53,8);
+	if ($crc!==hash('crc32',$buf)) throw new Exception('CRC error');
+	}
+
 //-- Read data
 	
 if (($buf=unserialize(substr($buf,61)))===false)
