@@ -56,15 +56,6 @@ private $symbols=array();	// array($key => array('T' => <symbol type>
 private $options=array();
 
 //---------
-// As soon as we create an instance, the PHK PHP runtime is required as
-// we use PHK_Util methods.
-
-public function __construct()
-{
-PHK::need_php_runtime();
-}
-
-//---------
 
 public function option($opt)
 {
@@ -181,7 +172,7 @@ if (is_null($path)) throw new Exception('No path provided');
 $data=$this->serialize();
 
 PHO_Display::trace("$path: Writing map file");
-PHK_Util::atomic_write($path,$data);
+PHO_File::atomic_write($path,$data);
 }
 
 //---------
@@ -598,13 +589,13 @@ PHO_Display::trace("Registering path <$fpath> as <$rpath>");
 switch($type=filetype($fpath))
 	{
 	case 'dir':
-		foreach(PHK_Util::scandir($fpath) as $entry)
+		foreach(PHO_File::scandir($fpath) as $entry)
 			{
-			$epath=PHK_Util::combine_path($fpath,$entry);
-			if (is_file($epath) && strpos(PHK_Util::file_suffix($entry),'php')===false)
+			$epath=PHO_File::combine_path($fpath,$entry);
+			if (is_file($epath) && strpos(PHO_File::file_suffix($entry),'php')===false)
 				PHO_Display::trace("Ignoring file $epath (not a PHP script)");
 			else
-				$this->register_path($epath,PHK_Util::combine_path($rpath,$entry));
+				$this->register_path($epath,PHO_File::combine_path($rpath,$entry));
 			}
 		break;
 

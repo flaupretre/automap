@@ -106,8 +106,6 @@ More information at http://automap.tekwire.net\n\n";
 
 public static function run($args)
 {
-PHK::need_php_runtime(); // Required to use PHK_Util methods with PHK PECL
-
 Automap_Cmd_Options::get_options($args);
 $action=(count($args)) ? array_shift($args) : 'help';
 Automap_Cmd_Options::get_options($args);
