@@ -1,23 +1,20 @@
 #
 #==============================================================================
 
+TARGETS = $(PRODUCT).phk
+SOURCE_DIR = src
+BUILD_DIR = build
+EXTRA_CLEAN = $(PRODUCT).psf $(PRODUCT)
+
+#-----------------------------
+
 include ./make.vars
 include ./make.common
 
 #-----------------------------
 
-TARGETS = $(PRODUCT).phk
-SOURCE_DIR = src
-BUILD_DIR = build
-DISTRIB=$(PRODUCT)-$(SOFTWARE_VERSION)-$(SOFTWARE_RELEASE).tgz
-EXTRA_CLEAN = $(PRODUCT).psf $(PRODUCT)
-
-#-----------------------------
-
 .PHONY: all clean_doc clean_distrib clean doc distrib test mem_test clean_test \
 	examples clean_examples
-
-all: $(TARGETS)
 
 clean: clean_doc clean_distrib clean_test clean_examples
 	/bin/rm -rf $(TARGETS) $(EXTRA_CLEAN)
@@ -53,24 +50,15 @@ clean_doc:
 
 #--- How to build distrib
 
-$(DISTRIB): $(TARGETS) doc
-
 distrib: $(DISTRIB)
+
+$(DISTRIB): $(TARGETS) doc
 	BASE=$(PWD) TMP_DIR=$(TMP_DIR) PRODUCT=$(PRODUCT) \
 	SOFTWARE_VERSION=$(SOFTWARE_VERSION) \
 	SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) $(MK_DISTRIB)
 
 clean_distrib:
 	/bin/rm -f $(DISTRIB)
-
-#--- How to transform the package into a shell executable
-
-exe: $(PRODUCT)
-
-$(PRODUCT): $(PRODUCT).phk
-	cp $(PRODUCT).phk $(PRODUCT)
-	chmod +x $(PRODUCT)
-	$(PHPCMD) $(PRODUCT) @set_interp '/bin/env php'
 
 #--- Sync external code - Dev private
 
