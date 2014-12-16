@@ -31,7 +31,7 @@ echo "OUTPUT=$OUTPUT"
 grep -v '^SOURCE=' <$1 | grep -v 'OUTPUT='
 ) >$TMP
 
-cd $PHPXREF
+cd $PHPXREF_DIR
 perl phpxref.pl -c $TMP
 
 /bin/rm -f $TMP

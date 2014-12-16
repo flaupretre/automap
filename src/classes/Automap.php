@@ -69,13 +69,13 @@ const F_SCRIPT='S';
 const F_EXTENSION='X';
 const F_PACKAGE='P';
 
-/** Load flags */
+/* Load flags */
 
-// Autoloader ignores maps loaded with this flag */
+/** Autoloader ignores maps loaded with this flag */
 
 const NO_AUTOLOAD=1;
 
-// Dont't check CRC */
+/** Dont't check CRC */
 
 const NO_CRC_CHECK=1;
 
@@ -258,10 +258,9 @@ foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
 
 //--------------
 /**
-/**
 * Register a success handler
 *
-* Once registered, the failure handler is called each time a symbol resolution
+* Once registered, the success handler is called each time a symbol resolution
 * succeeds.
 *
 * The success handler receives two arguments : An array as returned by the
@@ -281,7 +280,7 @@ self::$success_handlers[]=$callable;
 }
 
 //-------- Key management -----------
-/*
+/**
 * Combines a type and a symbol in a 'key'
 *
 * Extension names, functions, classes, and namespaces are case insensitive.
@@ -403,7 +402,7 @@ return array_keys(self::$maps);
 * @param string $path The path of the map file to load
 * @param integer $flags Load flags
 * @param string $_bp Reserved for internal operations. Never set this param.
-* @return string the map ID
+* @return int the map ID
 */
 
 public static function load($path,$flags=0,$_bp=null)

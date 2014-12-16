@@ -21,8 +21,13 @@ cd $TMP_DIR || error_exit "Cannot cd to $TMP_DIR"
 
 mkdir $SUBDIR
 cd $SUBDIR
+mkdir doc
 
-cp -rp $BASE/automap.phk $BASE/examples $BASE/test $BASE/README.md .
+for i in automap.phk examples test README.md doc/api.phk doc/api.pdf \
+	doc/xref.phk
+	do
+		cp -rp $BASE/$i ./$i
+done
 
 #----------------------------
 # Build tgz file

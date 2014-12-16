@@ -3,11 +3,6 @@
 
 merge -compress=gzip / $(1)
 
-#-- The icons
-
-add /etc/& $(PSF_DIR)/src/etc/license.htm
-add /etc/& $(PSF_DIR)/src/etc/license.txt
-
 #-- The options
 %options
 
@@ -21,6 +16,5 @@ packager          : F. Laupretre <mailto:francois@tekwire.net>
 web_run_script    : /index.html
 web_access        : /  #-- Open access
 web_main_redirect : true
-license_prefix    : /etc/license
 
 #----------------
