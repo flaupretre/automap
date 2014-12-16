@@ -1,45 +1,49 @@
 #
 #==============================================================================
 
-PRODUCT=automap
-TARGETS = $(PRODUCT).phk
-SOURCE_DIR = src
-PHK_CREATE = $(PHP) $(PHK_CREATOR) build
-EXPAND = build/expand.sh
-DISTRIB=$(PRODUCT)-$(SOFTWARE_VERSION)-$(SOFTWARE_RELEASE).tgz
-TO_CLEAN = $(TARGETS) $(PRODUCT).psf $(DISTRIB) automap
+include ./make.vars
+include ./make.common
 
 #-----------------------------
 
-include ./make.vars
+TARGETS = $(PRODUCT).phk
+SOURCE_DIR = src
+BUILD_DIR = build
+DISTRIB=$(PRODUCT)-$(SOFTWARE_VERSION)-$(SOFTWARE_RELEASE).tgz
+EXTRA_CLEAN = $(PRODUCT).psf $(PRODUCT)
+
+#-----------------------------
 
 .PHONY: all clean_doc clean_distrib clean doc distrib test mem_test clean_test \
 	examples clean_examples
 
 all: $(TARGETS)
 
-%.phk: %.psf
-	SOURCE_DIR=$(SOURCE_DIR) $(PHK_CREATE) $@ $<
-
-%.psf: %.psf.in
-	@chmod +x $(EXPAND)
-	SOFTWARE_VERSION=$(SOFTWARE_VERSION) SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) \
-		$(EXPAND) <$< >$@
-
 clean: clean_doc clean_distrib clean_test clean_examples
-	/bin/rm -rf $(TO_CLEAN)
+	/bin/rm -rf $(TARGETS) $(EXTRA_CLEAN)
+
+#--- How to build the package
+
+$(PRODUCT).phk: $(PRODUCT).psf
+	SOURCE_DIR=$(SOURCE_DIR) $(PHK_BUILD) $@ $<
+
+#--- Tests
 
 test mem_test: all
 	$(MAKE) -C test $@
 
 clean_test:
-	make -C test clean
+	$(MAKE) -C test clean
+
+#--- Examples
 
 examples: all
 	$(MAKE) -C examples $@
 
 clean_examples:
-	make -C examples clean
+	$(MAKE) -C examples clean
+
+#--- Documentation
 
 doc:
 	$(MAKE) -C doc
@@ -47,22 +51,32 @@ doc:
 clean_doc:
 	$(MAKE) -C doc clean
 
+#--- How to build distrib
+
 $(DISTRIB): $(TARGETS) doc
 
 distrib: $(DISTRIB)
-	chmod +x build/mk_distrib.sh
 	BASE=$(PWD) TMP_DIR=$(TMP_DIR) PRODUCT=$(PRODUCT) \
 	SOFTWARE_VERSION=$(SOFTWARE_VERSION) \
-	SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) build/mk_distrib.sh
+	SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) $(MK_DISTRIB)
 
 clean_distrib:
-	/bin/rm -f $<
+	/bin/rm -f $(DISTRIB)
 
-exe: automap
+#--- How to transform the package into a shell executable
 
-automap: automap.phk
-	cp automap.phk automap
-	chmod +x automap
-	$(PHP) automap @set_interp '/bin/env php'
+exe: $(PRODUCT)
+
+$(PRODUCT): $(PRODUCT).phk
+	cp $(PRODUCT).phk $(PRODUCT)
+	chmod +x $(PRODUCT)
+	$(PHPCMD) $(PRODUCT) @set_interp '/bin/env php'
+
+#--- Sync external code - Dev private
+
+sync_external:
+	for i in PHO_Display PHO_File PHO_Getopt PHO_Util ; do \
+		cp -p ../../../phool/public/src/$$i.php src/classes/external/phool ;\
+	done
 
 #-----------------------------------------------------------------------------

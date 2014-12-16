@@ -1,0 +1,32 @@
+#-----------------------------------------------------------------------------
+# Non Configurable parameters
+
+PRODUCT=automap
+
+SOFTWARE_VERSION = 3.0.0
+
+SOFTWARE_RELEASE = 1
+
+#--------------
+
+PHPCMD = $(VALGRIND) $(PHP)
+
+PHKMGR = $(PHPCMD) $(PHKMGR_PATH)
+
+PHK_BUILD = $(PHKMGR) build
+
+EXPAND = SOFTWARE_VERSION=$(SOFTWARE_VERSION) SOFTWARE_RELEASE=$(SOFTWARE_RELEASE) $(SHELL) $(BUILD_DIR)/expand.sh
+
+XREF = $(SHELL) $(BUILD_DIR)/xref.sh
+
+MK_DISTRIB = $(SHELL) $(BUILD_DIR)/mk_distrib.sh
+
+#-----------------------------------------------------------------------------
+# Common rules
+
+#--- How to expand a PSF (replace vars)
+
+%.psf: %.psf.in
+	$(EXPAND) <$< >$@
+
+#-----------------------------------------------------------------------------
