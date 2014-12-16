@@ -45,7 +45,10 @@ class Automap_Display // Static only
 public static function show($map,$format=null,$subfile_to_url_function=null)
 {
 if (is_null($format)||($format='auto'))
+	{
+	PHK::need_php_runtime();
 	$format=(PHK_Util::env_is_web() ? 'html' : 'text');
+	}
 
 switch($format)
 	{
