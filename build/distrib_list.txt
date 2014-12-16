@@ -1,0 +1,9 @@
+# The list of files/dir to include in the distrib
+
+automap.phk
+examples
+test
+README.md
+doc/api.phk
+doc/api.pdf
+doc/xref.phk
