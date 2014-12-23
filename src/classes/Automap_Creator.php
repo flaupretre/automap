@@ -28,10 +28,6 @@
 */
 //============================================================================
 
-// <PHK:ignore>
-require_once(dirname(__FILE__).'/Automap.php');
-// <PHK:end>
-
 // For PHP version < 5.3.0
 
 if (!defined('T_NAMESPACE')) define('T_NAMESPACE',-2);
