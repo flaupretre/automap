@@ -1,10 +1,10 @@
 #
 #==============================================================================
 
+SUBDIRS = handlers hello namespaces
+
 include ../make.vars
 include ../make.common
-
-SUBDIRS = handlers hello namespaces
 
 #-----------------------------
 
@@ -12,10 +12,9 @@ SUBDIRS = handlers hello namespaces
 
 all: examples
 
+clean: clean_base
+
 examples:
 	for i in $(SUBDIRS) ; do $(MAKE) -C $$i ; done
-
-clean:
-	for i in $(SUBDIRS) ; do $(MAKE) -C $$i $@ ; done
 
 #-----------------------------------------------------------------------------

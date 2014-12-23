@@ -1,20 +1,20 @@
 #==============================================================================
 
+TARGETS = auto.map
+AUTOMAP_PKG = ../../automap.phk
+
 include ../../make.vars
 include ../../make.common
-
-TARGETS = auto.map
 
 #-----------------------------------------------------------------------------
 
 .PHONY: all clean
 
-all:  $(TARGETS)
+all: base
 
-clean:
-	/bin/rm -f $(TARGETS)
+clean: clean_base
 
 auto.map :
-	$(PHPCMD) ../../automap.phk register src
+	$(PHPCMD) $(AUTOMAP_PKG) register src
 
 #-----------------------------------------------------------------------------

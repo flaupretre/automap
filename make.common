@@ -26,7 +26,17 @@ DISTRIB=$(PRODUCT)-$(SOFTWARE_VERSION)-$(SOFTWARE_RELEASE).tgz
 #-----------------------------------------------------------------------------
 # Common rules
 
-all: $(TARGETS)
+#-- Default target
+
+base: $(TARGETS)
+
+.PHONY: base clean_base exe
+
+#--- Cleanup targets and extra
+
+clean_base:
+	@if [ -n "$(SUBDIRS)" ] ; then for i in $(SUBDIRS) ;	do $(MAKE) -C $$i clean ; done ; fi
+	/bin/rm -rf $(TARGETS) $(EXTRA_CLEAN)
 
 #--- How to expand a PSF (replace vars)
 
