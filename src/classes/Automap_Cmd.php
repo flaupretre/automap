@@ -27,13 +27,6 @@
 */
 //============================================================================
 
-// <PHK:ignore>
-require_once(dirname(__FILE__).'/external/phool/PHO_Display.php');
-require_once(dirname(__FILE__).'/external/phool/PHO_File.php');
-require_once(dirname(__FILE__).'/Automap_Cmd_Options.php');
-require_once(dirname(__FILE__).'/Automap_Creator.php');
-// <PHK:end>
-
 class Automap_Cmd
 {
 //---------
@@ -106,26 +99,25 @@ More information at http://automap.tekwire.net\n\n";
 
 public static function run($args)
 {
-Automap_Cmd_Options::get_options($args);
+$op=new Automap_Cmd_Options;
+$op->parse_all($args);
 $action=(count($args)) ? array_shift($args) : 'help';
-Automap_Cmd_Options::get_options($args);
-$opt=Automap_Cmd_Options::options();
 
 switch($action)
 	{
 	case 'show':
-		$map=Automap::instance(Automap::load($opt['map_path'],Automap::NO_AUTOLOAD));
-		$map->show($opt['format']);
+		$map=Automap::instance(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
+		$map->show($op->option('format'));
 		break;
 
 	case 'check':
-		$map=Automap::instance(Automap::load($opt['map_path'],Automap::NO_AUTOLOAD));
+		$map=Automap::instance(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
 		$c=Automap_Tools::check($map);
 		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
 		break;
 
 	case 'set_option':
-		$mpath=$opt['map_path'];
+		$mpath=$op->option('map_path');
 		if (count($args)!=2) self::error_abort('set_option requires 2 arguments');
 		list($name,$value)=$args;
 		if (!is_file($mpath)) throw new Exception("$mpath: File not found");
@@ -136,8 +128,8 @@ switch($action)
 		break;
 
 	case 'unset_option':
-		$mpath=$opt['map_path'];
-		if (count($args)!=1) self::error_abort('set_option requires 1 argument');
+		$mpath=$op->option('map_path');
+		if (count($args)!=1) self::error_abort('unset_option requires 1 argument');
 		$name=array_shift($args);
 		if (!is_file($mpath)) throw new Exception("$mpath: File not found");
 		$map=new Automap_Creator();
@@ -155,39 +147,39 @@ switch($action)
 		//-- dl() outside of 'extension_dir'.
 
 		$map=new Automap_Creator();
-		if (($opt['append']) && is_file($opt['map_path']))
-			$map->read_map_file($opt['map_path']);
+		if (($op->option('append')) && is_file($op->option('map_path')))
+			$map->read_map_file($op->option('map_path'));
 		$map->register_extension_dir();
-		$map->save($opt['map_path']);
+		$map->save($op->option('map_path'));
 		break;
 
 	case 'register':
 		$map=new Automap_Creator();
-		if (($opt['append']) && is_file($opt['map_path']))
-			$map->read_map_file($opt['map_path']);
-		$abs_map_dir=PHO_File::mk_absolute_path(dirname($opt['map_path']));
-		if (!is_null($opt['base_path']))
-			$map->set_option('base_path',$opt['base_path']);
+		if (($op->option('append')) && is_file($op->option('map_path')))
+			$map->read_map_file($op->option('map_path'));
+		$abs_map_dir=PHO_File::mk_absolute_path(dirname($op->option('map_path')));
+		if (!is_null($op->option('base_path')))
+			$map->set_option('base_path',$op->option('base_path'));
 		$abs_base=PHO_File::combine_path($abs_map_dir,$map->option('base_path'));
 		foreach($args as $rpath)
 			{
 			$abs_path=PHO_File::combine_path($abs_base,$rpath);
 			$map->register_path($abs_path,$rpath);
 			}
-		$map->save($opt['map_path']);
+		$map->save($op->option('map_path'));
 		break;
 
 	case 'export':
-		$map=Automap::instance(Automap::load($opt['map_path']),Automap::NO_AUTOLOAD);
-		Automap_Tools::export($map,$opt['output']);
+		$map=Automap::instance(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
+		Automap_Tools::export($map,$op->option('output'));
 		break;
 
 	case 'import':
 		$map=new Automap_Creator();
-		if (($opt['append']) && is_file($opt['map_path']))
-			$map->read_map_file($opt['map_path']);
-		$map->import($opt['input']);
-		$map->save($opt['map_path']);
+		if (($op->option('append')) && is_file($op->option('map_path')))
+			$map->read_map_file($op->option('map_path'));
+		$map->import($op->option('input'));
+		$map->save($op->option('map_path'));
 		break;
 
 	case 'help':

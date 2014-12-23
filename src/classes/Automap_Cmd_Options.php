@@ -26,15 +26,27 @@
 */
 //============================================================================
 
-// <PHK:ignore>
-require_once(dirname(__FILE__).'/external/phool/PHO_Display.php');
-require_once(dirname(__FILE__).'/external/phool/PHO_Gotopt.php');
-// <PHK:end>
+//-------------
 
-class Automap_Cmd_Options
+class Automap_Cmd_Options extends PHO_Options
 {
 
-private static $options=array(
+// Short/long modifier args
+
+protected $opt_modifiers=array(
+	array('short' => 'v', 'long' => 'verbose', 'value' => false),
+	array('short' => 'q', 'long' => 'quiet'  , 'value' => false),
+	array('short' => 'm', 'long' => 'map_path'  , 'value' => true),
+	array('short' => 'b', 'long' => 'base_path'  , 'value' => true),
+	array('short' => 'a', 'long' => 'append'  , 'value' => false),
+	array('short' => 'o', 'long' => 'output'  , 'value' => true),
+	array('short' => 'i', 'long' => 'input'  , 'value' => true),
+	array('short' => 'f', 'long' => 'format'  , 'value' => true)
+	);
+
+// Option values
+
+protected $options=array(
 	'map_path' => 'auto.map',
 	'base_path' => null,
 	'append' => false,
@@ -44,76 +56,45 @@ private static $options=array(
 	);
 
 
-//-----------------------
-
-public static function options()
-{
-return self::$options;
-}
 
 //-----------------------
 
-public static function option($opt)
+protected function process_option($opt,$arg)
 {
-if (isset(self::$options[$opt])) return self::$options[$opt];
-throw new Exception("$opt: Unknown option");
-}
-
-//-----------------------
-
-public static function get_options(&$args)
-{
-list($options,$args2)=PHO_Getopt::getopt2($args,'vqm:b:ao:i:f:'
-	,array('verbose','quiet','map_path=','base_path=','append','output='
-		,'input=','format='));
-
-foreach($options as $option)
+switch($opt)
 	{
-	list($opt,$arg)=$option;
-	switch($opt)
-		{
-		case 'v':
-		case '--verbose':
-			PHO_Display::inc_verbose();
-			break;
+	case 'v':
+		PHO_Display::inc_verbose();
+		break;
 
-		case 'q':
-		case '--quiet':
-			PHO_Display::dec_verbose();
-			break;
+	case 'q':
+		PHO_Display::dec_verbose();
+		break;
 
-		case 'm':
-		case '--map_path':
-			self::$options['map_path']=$arg;
-			break;
+	case 'm':
+		$this->options['map_path']=$arg;
+		break;
 
-		case 'b':
-		case '--base_path':
-			self::$options['base_path']=$arg;
-			break;
+	case 'b':
+		$this->options['base_path']=$arg;
+		break;
 
-		case 'a':
-		case '--append':
-			self::$options['append']=true;
-			break;
+	case 'a':
+		$this->options['append']=true;
+		break;
 
-		case 'o':
-		case '--output':
-			self::$options['output']=$arg;
-			break;
+	case 'o':
+		$this->options['output']=$arg;
+		break;
 
-		case 'i':
-		case '--input':
-			self::$options['input']=$arg;
-			break;
+	case 'i':
+		$this->options['input']=$arg;
+		break;
 
-		case 'f':
-		case '--format':
-			self::$options['format']=$arg;
-			break;
-		}
+	case 'f':
+		$this->options['format']=$arg;
+		break;
 	}
-$args=$args2;
 }
 
 //---------

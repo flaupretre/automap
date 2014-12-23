@@ -26,10 +26,6 @@
 */
 //============================================================================
 
-// <PHK:ignore>
-require_once(dirname(__FILE__).'/PHO_Getopt.php');
-// <PHK:end>
-
 abstract class PHO_Options
 {
 // These properties must be declared in the child class (see PHO_Dummy_Options)
