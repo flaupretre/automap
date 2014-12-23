@@ -221,7 +221,7 @@ $t->check('Success handler: get_symbol(): returned element is array',is_array($s
 $t->check('Success handler: get_symbol() returns correct symbol type',$sym['stype']===Automap::T_CLASS);
 $t->check('Success handler: get_symbol() returns correct symbol name',$sym['symbol']==='c14');
 $t->check('Success handler: get_symbol() returns correct path type',$sym['ptype']===Automap::F_SCRIPT);
-$t->check('Success handler: get_symbol(): returned correct relative path',$sym['rpath']==='src1/file14.php');
+$t->check('Success handler: get_symbol(): returned correct relative path',$sym['rpath']==='src1/classes/file14.php');
 $t->check('Success handler: get_symbol(): checking file existence (absolute path)',file_exists($sym['path']));
 $t->check('Success handler: get_symbol(): checking file existence (relative path)',file_exists($sym['rpath']));
 
