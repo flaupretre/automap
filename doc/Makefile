@@ -1,9 +1,4 @@
 
-include ../make.vars
-include ../make.common
-
-#------
-
 SOURCE_DIR = ../src
 BUILD_DIR = ../build
 
@@ -15,12 +10,16 @@ EXTRA_CLEAN = api.psf xref.psf
 
 #------
 
+include ../make.vars
+include ../make.common
+
+#------
+
 .PHONY: clean
 
-all: $(TARGETS)
+all: base
 
-clean:
-	/bin/rm -f $(TARGETS) $(EXTRA_CLEAN)
+clean: clean_base
 
 #------ API Documentation
 #-- Restrict API documentation to the public API
@@ -32,7 +31,7 @@ api.phk: api.psf
 		$(TMP_DIR)/source ; done
 	$(PHPDOC) -o HTML:frames:DOM/earthli -ti "$(PRODUCT) API" \
 		-d $(TMP_DIR)/source -t $(TMP_DIR)/result
-	$(PHK_BUILD) $@ $< $(TMP_DIR)/result
+	$(PHK_BUILD) $@ -d SOURCE=$(TMP_DIR)/result
 	/bin/rm -rf $(TMP_DIR)
 
 #-- PDF
@@ -54,5 +53,5 @@ xref.phk: xref.psf
 	mkdir $(TMP_DIR)
 	PHPXREF_DIR="$(PHPXREF_DIR)" INPUT="$(SOURCE_DIR)" OUTPUT="$(TMP_DIR)" \
 			$(XREF) xref.cfg
-	$(PHK_BUILD) $@ $< $(TMP_DIR)
+	$(PHK_BUILD) $@ -d SOURCE=$(TMP_DIR)
 	/bin/rm -rf $(TMP_DIR)

@@ -1,5 +1,5 @@
 
-merge / $(PSF_DIR)/src
+add --directory $(SOURCE_DIR) -s --compression bzip2  .
 
 #---------------------------------------------------------------------
 %options

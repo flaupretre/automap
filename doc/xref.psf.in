@@ -1,7 +1,11 @@
 
 #-- Documentation files
 
-merge -compress=gzip / $(1)
+add --compress gzip --directory $(SOURCE) .
+
+#-- The license files
+
+add -C ../src etc/license.htm etc/license.txt
 
 #-- The options
 %options
@@ -14,6 +18,7 @@ author            : F. Laupretre <mailto:francois@tekwire.net>
 url               : http://automap.tekwire.net
 packager          : F. Laupretre <mailto:francois@tekwire.net>
 web_run_script    : /index.html
+license_prefix    : /etc/license
 web_access        : /  #-- Open access
 web_main_redirect : true
 
