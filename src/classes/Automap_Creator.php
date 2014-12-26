@@ -657,7 +657,7 @@ PHO_Display::debug("Registering PHK package (path=$fpath, rpath=$rpath)");
 $va=self::mk_varray(Automap::F_PACKAGE,$rpath);
 $this->unregister_target($va);
 
-$mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
+$mnt=PHK_Mgr::mount($fpath,PHK::NO_MOUNT_SCRIPT);
 $pkg=PHK_Mgr::instance($mnt);
 $id=$pkg->automap_id();
 if ($id) // If package has an automap
