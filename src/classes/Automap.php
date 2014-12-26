@@ -77,7 +77,7 @@ const NO_AUTOLOAD=1;
 
 /** Dont't check CRC */
 
-const NO_CRC_CHECK=1;
+const NO_CRC_CHECK=2;
 
 /** @var array Fixed value array containing a readable string for each
 *              symbol/target type
@@ -603,7 +603,7 @@ if (strlen($buf)!=($sz=(int)substr($buf,45,8)))
 
 //-- Check CRC
 
-if (!(flags & self::NO_CRC_CHECK))
+if (!($flags & self::NO_CRC_CHECK))
 	{
 	$crc=substr($buf,53,8);
 	$buf=substr_replace($buf,'00000000',53,8);
