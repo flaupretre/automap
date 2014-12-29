@@ -17,7 +17,9 @@
 //
 //=============================================================================
 /**
-* The Automap runtime code
+* The Automap PHP runtime code
+*
+* This code is never used when the PHK PECL extension is present.
 *
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
@@ -28,96 +30,114 @@
 
 if (!class_exists('Automap',false)) 
 {
+
 //===========================================================================
 /**
-* Automap runtime class
+* A loaded map
 *
-* This class allows to autoload PHP scripts and extensions by extension,
-* constant, class, or function name.
-*
-* Static methods use map IDs. A map ID is a non null positive number, uniquely
-* identifying a loaded map.
-*
-* @package Automap
+* This class is defined and used only by the PHP implementation of the Automap
+* class. When the PECL extension is present, this class does not exist.
 */
-//===========================================================================
 
-class Automap
+class Automap_Loaded_Map
 {
-/** Class version */
+private $map;		// Automap_Map instance;
+private $flags;		// Load flags;
+private $path;		// Map absolute path
+private $base_path;	// Absolute base path
 
-const VERSION='3.0.0';
+//--------------------------
 
-/** Cannot load maps older than this version */
- 
-const MIN_MAP_VERSION='3.0.0';
-
-/** Map files start with this string */
-
-const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
-
-/** Symbol types */
-
-const T_FUNCTION='F';
-const T_CONSTANT='C';
-const T_CLASS='L';
-const T_EXTENSION='E';
-
-/** Target types */
-
-const F_SCRIPT='S';
-const F_EXTENSION='X';
-const F_PACKAGE='P';
-
-/* Load flags */
-
-/** Autoloader ignores maps loaded with this flag */
-
-const NO_AUTOLOAD=1;
-
-/** Dont't check CRC */
-
-const NO_CRC_CHECK=2;
-
-/** @var array Fixed value array containing a readable string for each
-*              symbol/target type
+/**
+* Load a file
 */
 
-private static $type_strings=array(
-	self::T_FUNCTION	=> 'function',
-	self::T_CONSTANT	=> 'constant',
-	self::T_CLASS		=> 'class',
-	self::T_EXTENSION	=> 'extension',
-	self::F_SCRIPT		=> 'script',
-	self::F_EXTENSION	=> 'extension file',
-	self::F_PACKAGE		=> 'package'
-	);
+public function __construct($path,$id,$flags=0,$base_path=null)
+{
+$this->map=new Automap_Map($path,$flags);
 
-/** @var array(callables) Registered failure handlers */
+$this->flags=$flags;
 
-private static $failure_handlers=array();
+$this->path=self::mk_absolute_path($path);
 
-/** @var array(callables) Registered success handlers */
+if (!is_null($base_path)) $this->base_path=$base_path;
+else $this->base_path=self::combine_path(dirname($this->path)
+	,$this->map->option('base_path'),true);
+}
 
-private static $success_handlers=array();
+//-------
 
-/** @var bool Whether the PHP engine is able to autoload constants */
+public function __destruct()
+{
+unset($this->map);
+}
 
-private static $support_constant_autoload; // 
+//-----
 
-/** @var bool Whether the PHP engine is able to autoload functions */
+public function map() { return $this->map; }
+public function flags() { return $this->flags; }
+public function base_path() { return $this->base_path; }
 
-private static $support_function_autoload; // 
+//-------
+// We need to use combine_path() because the registered path can be absolute
 
-/** @var array(<map ID> => <map instance>) Array of active maps */
+public function get_symbol($type,$name)
+{
+$res=$this->map->get_symbol($type,$name);
+if ($res===false) return false;
+$res['path']=self::combine_path($this->base_path,$res['rpath']);
+return $res;
+}
 
-private static $maps=array();
+//-------
+/**
+* Try to resolve a symbol using this map
+*
+* @return exported entry if found, false if not found
+*/
 
-/** The map ID of the next map load */
+public function resolve($type,$name,$id)
+{
+if (($this->flags & Automap::NO_AUTOLOAD)
+		|| (($entry=$this->get_symbol($type,$name))===false)) return false;
 
-private static $load_index=1;
+//-- Found
+
+$path=$entry['path']; // Absolute path
+switch($entry['ptype'])
+	{
+	case Automap::F_EXTENSION:
+		if (!dl($path)) return false;
+		break;
+
+	case Automap::F_SCRIPT:
+		//PHO_Display::info("Loading script file : $path");//TRACE
+		{ require($path); }
+		break;
+
+	case Automap::F_PACKAGE:
+		// Remove E_NOTICE messages if the test script is a package - workaround
+		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
+		// In case of embedded packages and maps, the returned ID corresponds to
+		// the map where the symbol was finally found.
+	
+		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
+		$mnt=require($path);
+		error_reporting($errlevel);
+		$pkg=PHK_Mgr::instance($mnt);
+		$id=$pkg->automap_id();
+		return Automap::lmap($id)->resolve($type,$name,$id);
+		break;
+
+	default:
+		throw new Exception('<'.$entry['ptype'].'>: Unknown target type');
+	}
+return array($id,$entry);
+}
 
 //============ Utilities (taken from external libs) ============
+// We need to duplicate these methods here because this class is included in the
+// PHK PHP runtime, which does not include the PHO_xxx classes.
 
 //----- Taken from PHO_File
 /**
@@ -198,6 +218,98 @@ if (!self::is_absolute_path($path)) $path=self::combine_path(getcwd(),$path);
 return self::trailing_separ($path,$separ);
 }
 
+} // End of class Automap_Loaded_Map
+
+//===========================================================================
+/**
+* This class autoloads PHP scripts and extensions from an extension,
+* constant, class, or function name.
+*
+* Methods use map IDs. A map ID is a non null positive number, uniquely
+* identifying a loaded map.
+*
+* This is a static-only class. It is also implemented in the PECL extension
+* and included in the PHK PHP runtime.
+*
+* @package Automap
+*/
+//===========================================================================
+
+class Automap
+{
+/** Runtime API version */
+
+const VERSION='3.0.0';
+
+/** We cannot load maps older than this version */
+ 
+const MIN_MAP_VERSION='3.0.0';
+
+/** Map files start with this string */
+
+const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
+
+/** Symbol types */
+
+const T_FUNCTION='F';
+const T_CONSTANT='C';
+const T_CLASS='L';
+const T_EXTENSION='E';
+
+/** Target types */
+
+const F_SCRIPT='S';
+const F_EXTENSION='X';
+const F_PACKAGE='P';
+
+/* Load flags */
+
+/** Autoloader ignores maps loaded with this flag */
+
+const NO_AUTOLOAD=1;
+
+/** Dont't check CRC */
+
+const NO_CRC_CHECK=2;
+
+/** @var array Fixed value array containing a readable string for each
+*              symbol/target type
+*/
+
+private static $type_strings=array(
+	self::T_FUNCTION	=> 'function',
+	self::T_CONSTANT	=> 'constant',
+	self::T_CLASS		=> 'class',
+	self::T_EXTENSION	=> 'extension',
+	self::F_SCRIPT		=> 'script',
+	self::F_EXTENSION	=> 'extension file',
+	self::F_PACKAGE		=> 'package'
+	);
+
+/** @var array(callables) Registered failure handlers */
+
+private static $failure_handlers=array();
+
+/** @var array(callables) Registered success handlers */
+
+private static $success_handlers=array();
+
+/** @var bool Whether the PHP engine is able to autoload constants */
+
+private static $support_constant_autoload; // 
+
+/** @var bool Whether the PHP engine is able to autoload functions */
+
+private static $support_function_autoload; // 
+
+/** @var array(<map ID> => <Automap_Loaded_Map>) Array of active maps */
+
+private static $maps=array();
+
+/** @var integer The map ID of the next map load */
+
+private static $load_index=1;
+
 //================== Map manager (static methods) =======================
 
 //--------------
@@ -247,13 +359,13 @@ self::$failure_handlers[]=$callable;
 * Handlers are called in registration order.
 *
 * @param string $type one of the 'T_' constants
-* @param string $symbol The symbol name
+* @param string $name The symbol name
 * @return null
 */
 
-private static function call_failure_handlers($type,$symbol)
+private static function call_failure_handlers($type,$name)
 {
-foreach (self::$failure_handlers as $callable) $callable($type,$symbol);
+foreach (self::$failure_handlers as $callable) $callable($type,$name);
 }
 
 //--------------
@@ -279,6 +391,14 @@ public static function register_success_handler($callable)
 self::$success_handlers[]=$callable;
 }
 
+//---
+
+private function call_success_handlers($entry,$id)
+{
+foreach (self::$success_handlers as $callable)
+	$callable($entry,$id);
+}
+
 //-------- Key management -----------
 /**
 * Combines a type and a symbol in a 'key'
@@ -286,31 +406,31 @@ self::$success_handlers[]=$callable;
 * Extension names, functions, classes, and namespaces are case insensitive.
 * Constants are case sensitive.
 *
-* Do not use: public access reserved for Automap_Creator
+* Do not use: access reserved for Automap classes
 *
 * @param string $type one of the 'T_' constants
-* @param string $symbol The symbol value (case sensitive)
+* @param string $name The symbol value (case sensitive)
 * @return string Symbol key
 */
 
-public static function key($type,$symbol)
+public static function key($type,$name)
 {
-$symbol=trim($symbol,'\\');
+$name=trim($name,'\\');
 
 switch($type)
 	{
 	case self::T_EXTENSION:
 	case self::T_FUNCTION:
 	case self::T_CLASS:
-		$symbol=strtolower($symbol);
+		$name=strtolower($name);
 		break;
 	default:
 		// lowercase namespace only
-		$pos=strrpos($symbol,'\\');
-		if ($pos!==false) $symbol=strtolower(substr($symbol,0,$pos)).'\\'.substr($symbol,$pos+1);
+		$pos=strrpos($name,'\\');
+		if ($pos!==false) $name=strtolower(substr($name,0,$pos)).'\\'.substr($name,$pos+1);
 	}
 
-return $type.$symbol;
+return $type.$name;
 }
 
 //---------
@@ -345,7 +465,6 @@ return $type;
 
 public static function id_is_active($id)
 {
-if (!is_numeric($id)) throw new Exception($id."Invalid map ID");
 return isset(self::$maps[$id]);
 }
 
@@ -369,18 +488,57 @@ return $id;
 
 //-----
 /**
-* Returns the Automap object corresponding to an active map ID
+* Returns the Automap_Map object corresponding to an active map ID
 *
 * @param string $id The map ID
-* @return Automap instance
+* @return Automap_Map instance
 * @throws Exception if map ID is invalid
 */
 
-public static function instance($id)
+public static function map($id)
+{
+self::validate($id);
+
+return self::$maps[$id]->map();
+}
+
+//-----
+/**
+* Returns the Automap_Loaded_Map object corresponding to an active map ID
+*
+* Reserved for internal use. This method is not implemented in the PECL code.
+*
+* @param string $id The map ID
+* @return Automap_Loaded_Map instance
+* @throws Exception if map ID is invalid
+*/
+
+public static function lmap($id)
 {
 self::validate($id);
 
 return self::$maps[$id];
+}
+
+//-----
+/**
+* Returns the absolute base path corresponding to an active ID
+*
+* Needed because Automap_Loaded_Map objects exist in PHP only. So, they cannot
+* be accessed when PECL extension is active.
+*
+* Reserved for internal use.
+*
+* @param string $id The map ID
+* @return The absolute base path for this ID
+* @throws Exception if map ID is invalid
+*/
+
+public static function base_path($id)
+{
+self::validate($id);
+
+return self::$maps[$id]->base_path();
 }
 
 //-----
@@ -408,16 +566,18 @@ return array_keys(self::$maps);
 public static function load($path,$flags=0,$_bp=null)
 {
 $id=self::$load_index++;
+
 try
 {
-$map=new self($path,$id,$_bp,$flags);
+$lmap=new Automap_Loaded_Map($path,$id,$flags,$_bp);
 }
 catch (Exception $e)
 	{
 	throw new Exception($path.': Cannot load - '.$e->getMessage());
 	}
 
-self::$maps[$id]=$map;
+self::$maps[$id]=$lmap;
+// PHO_Display::info("Loaded $path as ID $id");//TRACE
 return $id;
 }
 
@@ -436,12 +596,10 @@ return $id;
 
 public static function unload($id)
 {
-if (self::id_is_active($id))
-	{
-	$map=self::instance($id);
-	$map->invalidate();
-	unset(self::$maps[$id]);
-	}
+self::validate($id);
+
+unset(self::$maps[$id]);
+// PHO_Display::info("Unloaded ID $id");//TRACE
 }
 
 //---------------------------------
@@ -453,380 +611,89 @@ return false;
 
 //-------- Symbol resolution -----------
 
-private static function symbol_is_defined($type,$symbol)
+private static function symbol_is_defined($type,$name)
 {
 switch($type)
 	{
 	case self::T_CONSTANT:	return (self::$support_constant_autoload ?
-		defined($symbol,false) : defined($symbol));
+		defined($name,false) : defined($name));
 
 	case self::T_FUNCTION:	return (self::$support_function_autoload ?
-		function_exists($symbol,false) : function_exists($symbol));
+		function_exists($name,false) : function_exists($name));
 
-	case self::T_CLASS:		return class_exists($symbol,false)
-								|| interface_exists($symbol,false)
-								|| (function_exists('trait_exists') && trait_exists($symbol,false));
+	case self::T_CLASS:		return class_exists($name,false)
+								|| interface_exists($name,false)
+								|| (function_exists('trait_exists') && trait_exists($name,false));
 
-	case self::T_EXTENSION:	return extension_loaded($symbol);
+	case self::T_EXTENSION:	return extension_loaded($name);
 	}
 }
 
 //---------
 // The autoload handler, the default type is 'class', hoping that future
 // versions of PHP support function and constant autoloading.
-// Unpublished
+// Reserved for internal use
 
-public static function autoload_hook($symbol,$type=self::T_CLASS)
+public static function autoload_hook($name,$type=self::T_CLASS)
 {
-self::resolve_symbol($type,$symbol,true,false);
+self::resolve($type,$name,true,false);
 }
 
 //---------
 // resolve a symbol, i.e. load what needs to be loaded for the symbol to be
 // defined. Returns true on success / false if unable to resolve symbol.
 
-private static function resolve_symbol($type,$symbol,$autoloading=false
+private static function resolve($type,$name,$autoloading=false
 	,$exception=false)
 {
-//echo "resolve_symbol(".self::type_to_string($type).",$symbol)\n";//TRACE
+//echo "resolve(".self::type_to_string($type).",$name)\n";//TRACE
 
-if ((!$autoloading)&&(self::symbol_is_defined($type,$symbol))) return true;
+if ((!$autoloading)&&(self::symbol_is_defined($type,$name))) return true;
 
-$key=self::key($type,$symbol);
-foreach(array_reverse(self::$maps) as $map)
+foreach(array_reverse(self::$maps,true) as $id => $map)
 	{
-	if ((!($map->flags() & self::NO_AUTOLOAD)) && $map->resolve_key($key))
-		return true;
+	if (($res=$map->resolve($type,$name,$id))===false) continue;
+	list($id,$entry)=$res;
+	// PHO_Display::info("Symbol $name was resolved from ID $id");
+	self::call_success_handlers($entry,$id);
+	return true;
 	}
 
 // Failure
 
-self::call_failure_handlers($type,$symbol);
+self::call_failure_handlers($type,$name);
 if ($exception) throw new Exception('Automap: Unknown '
-	.self::type_to_string($type).': '.$symbol);
+	.self::type_to_string($type).': '.$name);
 return false;
 }
 
 //---------
 
-public static function get_function($symbol)
-	{ return self::resolve_symbol(self::T_FUNCTION,$symbol,false,false); }
+public static function get_function($name)
+	{ return self::resolve(self::T_FUNCTION,$name,false,false); }
 
-public static function get_constant($symbol)
-	{ return self::resolve_symbol(self::T_CONSTANT,$symbol,false,false); }
+public static function get_constant($name)
+	{ return self::resolve(self::T_CONSTANT,$name,false,false); }
 
-public static function get_class($symbol)
-	{ return self::resolve_symbol(self::T_CLASS,$symbol,false,false); }
+public static function get_class($name)
+	{ return self::resolve(self::T_CLASS,$name,false,false); }
 
-public static function get_extension($symbol)
-	{ return self::resolve_symbol(self::T_EXTENSION,$symbol,false,false); }
+public static function get_extension($name)
+	{ return self::resolve(self::T_EXTENSION,$name,false,false); }
 
 //---------
 
-public static function require_function($symbol)
-	{ return self::resolve_symbol(self::T_FUNCTION,$symbol,false,true); }
+public static function require_function($name)
+	{ return self::resolve(self::T_FUNCTION,$name,false,true); }
 
-public static function require_constant($symbol)
-	{ return self::resolve_symbol(self::T_CONSTANT,$symbol,false,true); }
+public static function require_constant($name)
+	{ return self::resolve(self::T_CONSTANT,$name,false,true); }
 
-public static function require_class($symbol)
-	{ return self::resolve_symbol(self::T_CLASS,$symbol,false,true); }
+public static function require_class($name)
+	{ return self::resolve(self::T_CLASS,$name,false,true); }
 
-public static function require_extension($symbol)
-	{ return self::resolve_symbol(self::T_EXTENSION,$symbol,false,true); }
-
-//=============== Instance (one per map) =================================
-// Automap instance
-// Used for plain maps and package-wrapped maps. So, this class must support
-// plain script files and packages.
-// Note: now that the PECL extension exists, there's no need to accelerate the
-// PHP runtime anymore. The priority is given to simplicity.
-
-private $path;			// The absolute path of the map file
-private $base_path;		// Absolute base path
-private $id;			// Map ID
-private $symbols=null;	// array($key => array('T' => <symbol type>
-						// , 'n' => <case-sensitive symbol name>
-						// , 't' => <target type>, 'p' => <target relative path>)
-private $flags;			// Load flags
-private $options=null;	// array()
-private $version;		// The version of the Automap_Creator that created the map
-private $min_version;	// The minimum runtime version able to understand the map file
-private $valid;			// True if the instance is valid (still loaded). Needed
-						// because the instance can still exist after the map is
-						// unloaded.
-
-//-----
-// This object must be created from load().
-// Making __construct() private avoids direct creation from elsewhere.
-
-private function __construct($path,$id,$base_path,$flags)
-{
-$this->path=self::mk_absolute_path($path);
-$this->id=$id;
-$this->flags=$flags;
-$this->valid=true;
-
-try
-{
-//-- Get file content
-
-if (($buf=@file_get_contents($this->path))===false)
-	throw new Exception('Cannot read map file');
-$bufsize=strlen($buf);
-if ($bufsize<62) throw new Exception("Short file (size=$bufsize)");
-
-//-- Check magic
-
-if (substr($buf,0,14)!=self::MAGIC) throw new Exception('Bad Magic');
-
-//-- Check min runtime version required by map
-
-$this->min_version=trim(substr($buf,16,12));	
-if (version_compare($this->min_version,self::VERSION) > 0)
-	throw new Exception($this->path.': Cannot understand this map.'.
-		' Requires at least Automap version '.$this->min_version);
-
-//-- Check if the map format is not too old
-
-$this->version=trim(substr($buf,30,12));
-if (strlen($this->version)==0)
-	throw new Exception('Invalid empty map version');
-if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
-	throw new Exception('Cannot understand this map. Format too old.');
-$map_major_version=$this->version{0};
-
-//-- Check file size
-
-if (strlen($buf)!=($sz=(int)substr($buf,45,8)))
-	throw new Exception('Invalid file size. Should be '.$sz);
-
-//-- Check CRC
-
-if (!($flags & self::NO_CRC_CHECK))
-	{
-	$crc=substr($buf,53,8);
-	$buf=substr_replace($buf,'00000000',53,8);
-	if ($crc!==hash('crc32',$buf)) throw new Exception('CRC error');
-	}
-
-//-- Read data
-	
-if (($buf=unserialize(substr($buf,61)))===false)
-	throw new Exception('Cannot unserialize data from map file');
-if (!is_array($buf))
-	throw new Exception('Map file should contain an array');
-if (!array_key_exists('options',$buf)) throw new Exception('No options array');
-if (!is_array($this->options=$buf['options']))
-	throw new Exception('Options should be an array');
-if (!array_key_exists('map',$buf)) throw new Exception('No symbol table');
-if (!is_array($bsymbols=$buf['map']))
-	throw new Exception('Symbol table should contain an array');
-
-//-- Compute base path
-// When set, the base_path arg is an absolute path (with trailing separ)
-
-if (!is_null($base_path)) $this->base_path=$base_path;
-else $this->base_path=self::combine_path(dirname($this->path)
-	,$this->option('base_path'),true);
-
-//-- Process symbols
-
-$this->symbols=array();
-foreach($bsymbols as $bval)
-	{
-	$a=array();
-	switch($map_major_version)
-		{
-		case '3':
-			if (strlen($bval)<5) throw new Exception("Invalid value string: <$bval>");
-			$a['T']=$bval{0};
-			$a['t']=$bval{1};
-			$ta=explode('|',substr($bval,2));
-			if (count($ta)<2) throw new Exception("Invalid value string: <$bval>");
-			$a['n']=$ta[0];
-			$a['p']=$ta[1];
-			break;
-
-		default:
-			throw new Exception("Cannot understand this map version ($map_major_version)");
-		}
-	$key=self::key($a['T'],$a['n']);
-	$this->symbols[$key]=$a;
-	}
-}
-catch (Exception $e)
-	{
-	$this->symbols=array(); // No retry later
-	throw new Exception($this->path.': Cannot load map - '.$e->getMessage());
-	}
-}
-
-//-----
-// We need to use combine_path() because the registered path can be absolute
-
-private function abs_path($entry)
-{
-return self::combine_path($this->base_path,$entry['p']);
-}
-
-//-----
-
-public function is_valid()
-{
-return ($this->valid);
-}
-
-//-----
-
-private function check_valid()
-{
-if (!$this->is_valid()) throw new Exception('Accessing invalid (unloaded) map instance');
-}
-
-//-----
-
-private function invalidate()
-{
-$this->valid=false;
-}
-
-
-//---
-// These utility functions return 'read-only' properties
-
-public function path() { $this->check_valid(); return $this->path; }
-public function id() { $this->check_valid(); return $this->id; }
-public function flags() { $this->check_valid(); return $this->flags; }
-public function options() { $this->check_valid(); return $this->options; }
-public function version() { $this->check_valid(); return $this->version; }
-public function min_version() { $this->check_valid(); return $this->min_version; }
-
-//---
-
-public function option($opt)
-{
-$this->check_valid();
-
-return (isset($this->options[$opt]) ? $this->options[$opt] : null);
-}
-
-//---
-
-public function symbol_count()
-{
-$this->check_valid();
-
-return count($this->symbols);
-}
-
-//---
-
-private function export_entry($entry)
-{
-return array(
-	'stype'		=> $entry['T'],
-	'symbol' 	=> $entry['n'],
-	'ptype'		=> $entry['t'],
-	'rpath'		=> $entry['p'],
-	'path'		=> $this->abs_path($entry)
-	);
-}
-
-//---
-
-public function get_symbol($type,$symbol)
-{
-$key=self::key($type,$symbol);
-if (!isset($this->symbols[$key])) return false;
-return $this->export_entry($this->symbols[$key]);
-}
-
-//---
-// Return an array without keys (key format is private and may change)
-
-public function symbols()
-{
-$this->check_valid();
-
-$ret=array();
-foreach($this->symbols as $entry) $ret[]=$this->export_entry($entry);
-
-return $ret;
-}
-
-//---
-
-private function call_success_handlers($entry)
-{
-foreach (self::$success_handlers as $callable)
-	$callable($this->export_entry($entry),$this);
-}
-
-//---
-/**
-* Resolves a symbol.
-*
-* When the symbol is in a package, the search is recursive and the
-* concerned (sub)package(s) are automatically loaded.
-*
-* @param string $key The key we are resolving
-* @return boolean symbol could be resolved (true/false)
-*/
-
-private function resolve_key($key)
-{
-//echo "resolve_key($key)\n";//TRACE
-
-if (!isset($this->symbols[$key])) return false;
-
-$entry=$this->symbols[$key];
-$stype=$entry['T'];
-$sname=$entry['n'];
-$ftype=$entry['t'];
-$path=$this->abs_path($entry);
-
-switch($ftype)
-	{
-	case self::F_EXTENSION:
-		if (!dl($path)) return false;
-		$this->call_success_handlers($entry);
-		break;
-
-	case self::F_SCRIPT:
-		//echo "Loading script file : $path\n";//TRACE
-		{ require($path); }
-		$this->call_success_handlers($entry);
-		break;
-
-	case self::F_PACKAGE:
-		// Remove E_NOTICE messages if the test script is a package - workaround
-		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
-
-		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
-		$mnt=require($path);
-		error_reporting($errlevel);
-		// Don't call success handlers for a package (recursion)
-		$pkg=PHK_Mgr::instance($mnt);
-		$id=$pkg->automap_id();
-		self::instance($id)->resolve_key($key);
-		// Don't umount the package
-		break;
-
-	default:
-		throw new Exception('<'.$ftype.'>: Unknown target type');
-	}
-
-return true;
-}
-
-//---
-// Proxy to Automap_Display::show()
-
-public function show($format=null,$subfile_to_url_function=null)
-{
-return Automap_Display::show($this,$format,$subfile_to_url_function);
-}
+public static function require_extension($name)
+	{ return self::resolve(self::T_EXTENSION,$name,false,true); }
 
 //---
 } // End of class Automap

@@ -42,16 +42,19 @@ class Automap_Tools // Static only
 //---
 // Returns the number of errors found
 
-public static function check(Automap $map)
+public static function check($id)
 {
 $checked_targets=array();
+
+$base_path=Automap::base_path($id);
+$map=Automap::map($id);
 
 $c=0;
 foreach($map->symbols() as $s)
 	{
 	try
 		{
-		$path=$s['path'];
+		$path=PHO_File::combine_path($base_path,$s['rpath']);
 		$ptype=$s['ptype'];
 		$key=$ptype.$path;
 		if (isset($checked_targets[$key])) continue;
@@ -98,7 +101,7 @@ return $c;
 
 //---
 
-public static function export(Automap $map,$path=null)
+public static function export(Automap_Map $map,$path=null)
 {
 if (is_null($path)) $path="php://stdout";
 $fp=fopen($path,'w');

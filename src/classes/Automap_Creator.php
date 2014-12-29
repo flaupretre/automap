@@ -612,7 +612,7 @@ public function read_map_file($fpath)
 PHO_Display::trace("Reading map file ($fpath)");
 
 $id=Automap::load($fpath,Automap::NO_AUTOLOAD);
-$map=Automap::instance($id);
+$map=Automap::map($id);
 $this->options=$map->options();
 $this->symbols=array();
 $this->merge_map_symbols($map);
@@ -627,7 +627,7 @@ Automap::unload($id);
 //PHO_Display::debug("Merging map file from $fpath (rpath=$rpath)");
 //
 //$id=Automap::load($fpath);
-//$map=Automap::instance($id);
+//$map=Automap::map($id);
 //$this->merge_map_symbols($map,$rpath);
 //Automap::umount($mnt);
 //}
