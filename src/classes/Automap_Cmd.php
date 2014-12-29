@@ -106,13 +106,13 @@ $action=(count($args)) ? array_shift($args) : 'help';
 switch($action)
 	{
 	case 'show':
-		$map=Automap::instance(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
+		$map=Automap::map(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
 		$map->show($op->option('format'));
 		break;
 
 	case 'check':
-		$map=Automap::instance(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
-		$c=Automap_Tools::check($map);
+		$id=Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD);
+		$c=Automap_Tools::check($id);
 		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
 		break;
 
@@ -170,7 +170,7 @@ switch($action)
 		break;
 
 	case 'export':
-		$map=Automap::instance(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
+		$map=Automap::map(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
 		Automap_Tools::export($map,$op->option('output'));
 		break;
 

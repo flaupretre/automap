@@ -42,7 +42,8 @@ class Automap_Display // Static only
 //---------
 // Display the content of a map
 
-public static function show($map,$format=null,$subfile_to_url_function=null)
+public static function show(Automap_Map $map,$format=null
+	,$subfile_to_url_function=null)
 {
 if (is_null($format)||($format='auto'))
 	{
@@ -67,7 +68,7 @@ switch($format)
 
 //---------
 
-private static function show_text($map,$subfile_to_url_function=null)
+private static function show_text(Automap_Map $map,$subfile_to_url_function=null)
 {
 echo "\n* Global information :\n\n";
 echo '	Map version : '.$map->version()."\n";
@@ -121,7 +122,7 @@ foreach($map->symbols() as $s)
 //---
 // The same in HTML
 
-private static function show_html($map,$subfile_to_url_function=null)
+private static function show_html(Automap_Map $map,$subfile_to_url_function=null)
 {
 echo "<h2>Global information</h2>";
 

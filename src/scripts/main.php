@@ -30,6 +30,7 @@ require(dirname(__FILE__).'/../classes/Automap_Cmd.php');
 require(dirname(__FILE__).'/../classes/Automap_Cmd_Options.php');
 require(dirname(__FILE__).'/../classes/Automap_Creator.php');
 require(dirname(__FILE__).'/../classes/Automap_Display.php');
+require(dirname(__FILE__).'/../classes/Automap_Map.php');
 require(dirname(__FILE__).'/../classes/Automap_Tools.php');
 // <PHK:end>
 
