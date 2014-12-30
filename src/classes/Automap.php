@@ -54,11 +54,9 @@ private $base_path;	// Absolute base path
 
 public function __construct($path,$id,$flags=0,$base_path=null)
 {
-$this->map=new Automap_Map($path,$flags);
-
-$this->flags=$flags;
-
 $this->path=self::mk_absolute_path($path);
+$this->map=new Automap_Map($this->path,$flags);
+$this->flags=$flags;
 
 if (!is_null($base_path)) $this->base_path=$base_path;
 else $this->base_path=self::combine_path(dirname($this->path)

@@ -92,7 +92,7 @@ $map1=Automap::map($id1);
 //---------------------------------
 $t->start('Map methods');
 
-$t->check('Map path',$map1->path()===MAP1);
+$t->check('Map path',$map1->path()===__DIR__.'/'.MAP1);
 
 $t->check('Flags',$map1->flags()===0);
 
