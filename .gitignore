@@ -1,3 +1,4 @@
 *.phk
 *.map
 automap.psf
+test/php.log
