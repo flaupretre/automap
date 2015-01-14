@@ -391,7 +391,7 @@ self::$success_handlers[]=$callable;
 
 //---
 
-private function call_success_handlers($entry,$id)
+private static function call_success_handlers($entry,$id)
 {
 foreach (self::$success_handlers as $callable)
 	$callable($entry,$id);
