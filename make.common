@@ -5,7 +5,7 @@ PRODUCT=automap
 
 SOFTWARE_VERSION = 3.0.0
 
-SOFTWARE_RELEASE = 1
+SOFTWARE_RELEASE = a1
 
 #--------------
 
