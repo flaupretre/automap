@@ -1,2 +1,4 @@
 *.phk
-examples/auto.map
+*.map
+automap.psf
+test/php.log

@@ -1,35 +1,30 @@
 #==============================================================================
 
 TARGETS = auto1.map auto2.map
+EXTRA_CLEAN = php.log
 
 include ../make.vars
+include ../make.common
 
 #-----------------------------------------------------------------------------
 
-.PHONY: all clean check mem_check install
+.PHONY: all clean test mem_test
 
-all:  $(TARGETS)
+all: base
 
-clean:
-	/bin/rm -f $(TARGETS) php.log
+clean: clean_base
 
 auto1.map :
-	$(PHP) ../Automap.phk register auto1.map . src1
+	$(PHPCMD) ../automap.phk register -m auto1.map src1
 	
 auto2.map :
-	$(PHP) ../Automap.phk register auto2.map . src2
+	$(PHPCMD) ../automap.phk register -m auto2.map src2
 
-check: all
-	$(PHP) test.php
+test: base
+	$(PHPCMD) test.php
 
-mem_check: all
+mem_test: base
 	valgrind --tool=memcheck --log-file=php.log --leak-check=full \
 		--track-origins=yes $(PHP) test.php
-
-install:
-# Do nothing
-
-doc:
-# Do nothing
 
 #-----------------------------------------------------------------------------

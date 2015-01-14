@@ -1,7 +1,7 @@
 <?php
 
 define('MAP1','auto1.map');
-define('MAP1_SYMCOUNT',7);
+define('MAP1_SYMCOUNT',8);
 
 define('MAP2','auto2.map');
 
@@ -9,102 +9,90 @@ define('MAP2','auto2.map');
 
 require dirname(__FILE__).'/Tester.php';
 
-$extension_present=extension_loaded('automap');
+$extension_present=extension_loaded('phk');
 $t=$GLOBALS['t']=new Tester('Automap runtime ('.($extension_present ? 'with' : 'whithout')
 	.' PECL accelerator)');
 
 //------------------------------------------------------------------------
 $t->start('Include Automap.phk');
 
-$res=require(dirname(__FILE__).'/../Automap.phk');
+$res=require(dirname(__FILE__).'/../automap.phk');
 $t->check('include() returns NULL',is_string($res));
 
 //---------------------------------
-$t->start('Mount maps');
+$t->start('Load maps');
 
-$mnt1=Automap::load(MAP1);
-$t->check('mount() returns string (1)',is_string($mnt1));
+$id1=Automap::load(MAP1);
+$t->check('load() returns int (1)',is_int($id1));
 
-$map1=Automap::instance($mnt1);
-$t->check('map object is instance of Automap class (1)',($map1 instanceof Automap));
+$map1=Automap::map($id1);
+$t->check('map object is instance of Automap_Map (1)',($map1 instanceof Automap_Map));
 
-$mnt2=Automap::mount(MAP2);
-$t->check('mount() returns string (2)',is_string($mnt2));
+$id2=Automap::load(MAP2);
+$t->check('load() returns int (2)',is_int($id2));
 
-$map2=Automap::instance($mnt2);
-$t->check('map object is instance of Automap class (2)',($map2 instanceof Automap));
+$map2=Automap::map($id2);
+$t->check('map object is instance of Automap_Map (2)',($map2 instanceof Automap_Map));
 
 //---------------------------------
 $t->start('Versions');
 
 $t->check('version() returns string',is_string($map1->version()));
 $t->check('min_version() returns string',is_string($map1->min_version()));
-$t->check('min_map_version() returns string',is_string($map1->min_map_version()));
 
 //---------------------------------
-$t->start('Mount points');
+$t->start('Map IDs');
 
-$t->check('$mnt1 is_mounted() is true',Automap::is_mounted($mnt1));
+$t->check('$id1 id_is_active() is true',Automap::id_is_active($id1));
 
-$t->check('<bad> is not mounted()',!Automap::is_mounted('<bad>'));
+$t->check('1000 is not an active ID',!Automap::id_is_active(1000));
 
-$ex=false;
-try { Automap::validate($mnt2); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate($mnt2) does not throw exceptions', !$ex);
-
-$ex=false;
-try { Automap::validate('no_name'); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate(<wrong string>) throws exceptions', $ex);
+$t->check('String is not an active ID',!Automap::id_is_active('<bad>'));
 
 //---------------------------------
-$t->start('Mount/umount');
+$t->start('load/unload');
 
-Automap::unload($mnt1);
+Automap::unload($id1);
 
-$t->check('is_mounted() false on umounted ID',!Automap::is_mounted($mnt1));
-$t->check('Unmounted instance is not valid',!$map1->is_valid());
-
-$ex=false;
-try { Automap::validate($mnt1); }
-catch (Exception $e) { $ex=true; }
-$t->check('validate on umounted ID thows exception',$ex);
-
-$saved_mnt1=$mnt1;
-
-$mnt1=Automap::mount(MAP1,null,'mnt_id');
-$t->check('Explicit mnt ID',$mnt1==='mnt_id');
-
-$map11=Automap::instance($mnt1);
-
-Automap::umount($mnt1);
-
-$mnt1=Automap::mount(MAP1);
-$t->check('Map remounted with same ID',$mnt1===$saved_mnt1);
-
-$ex=false;
-try { $map11->options(); }
-catch (Exception $e) { $ex=true; }
-$t->check('Accessing an unmounted instance throws exception',$ex);
+$t->check('id_is_active() false on unloaded ID',!Automap::id_is_active($id1));
 
 $ex=false;
 try { $map1->options(); }
 catch (Exception $e) { $ex=true; }
-$t->check('Accessing a remounted instance throws exception',$ex);
+$t->check('Accessing an unloaded instance does not throw exception',!$ex);
 
-$t->check('Remounted instance is not valid',!$map1->is_valid());
+$ex=false;
+try { Automap::unload($id1); }
+catch (Exception $e) { $ex=true; }
+$t->check('Unloading an unloaded ID throws exception',$ex);
 
-$map1=Automap::instance($mnt1);
+$ex=false;
+try { Automap::unload(1000); }
+catch (Exception $e) { $ex=true; }
+$t->check('Unloading an invalid (numeric) ID throws exception',$ex);
+
+$ex=false;
+try { @Automap::unload('<bad>'); }
+catch (Exception $e) { $ex=true; }
+$t->check('Unloading an invalid (non-numeric) ID throws exception',$ex);
+
+$prev_id1=$id1;
+$id1=Automap::load(MAP1);
+
+$ex=false;
+try { $map1->options(); }
+catch (Exception $e) { $ex=true; }
+$t->check('Accessing a reloaded instance does not throw exception',!$ex);
+
+$t->check('Reloaded ID is still inactive',!Automap::id_is_active($prev_id1));
+$t->check('Reloaded ID is different',($id1 != $prev_id1));
+
+$map1=Automap::map($id1);
 
 //---------------------------------
-$t->start('Instance methods');
+$t->start('Map methods');
 
-$t->check('Map path',$map1->path()===dirname(__FILE__).'/'.MAP1);
-
-$t->check('Base directory',$map1->base_dir()===dirname(__FILE__).'/');
-
-$t->check('Mount ID',$map1->mnt()===$mnt1);
+$t->check('Map path',$map1->path()===__DIR__.'/'.MAP1);
 
 $t->check('Flags',$map1->flags()===0);
 
@@ -129,13 +117,11 @@ foreach ($syms as $sym)
 	$t->check('symbols(): element contains <stype> index',isset($sym['stype']));
 	$t->check('symbols(): element contains <symbol> index',isset($sym['symbol']));
 	$t->check('symbols(): element contains <ptype> index',isset($sym['ptype']));
-	$t->check('symbols(): element contains <path> index',isset($sym['path']));
-	$t->check('symbols(): checking path',file_exists($sym['path']));
 	$t->check('symbols(): element contains <rpath> index',isset($sym['rpath']));
 	$t->check('symbols(): checking rpath',file_exists($sym['rpath']));
 	}
 
-$t->check('check() returns 0 errors',Automap_Tools::check($map1)===0);
+$t->check('check() returns no error',Automap_Tools::check($id1)===0);
 
 $t->check('get_symbol() returns false on non existing symbol',$map1->get_symbol(Automap::T_CLASS,'nosuchclass')===false);
 
@@ -190,18 +176,40 @@ $t->start('Autoloading');
 $t->check('Intra-map', Message2::get('foo')==='FOO2');
 $t->check('Inter-map', Message2x::get('foo')==='FOO1');
 
+Automap::unload($id1);
+$t->check('Cannot autoload from an unloaded map',!class_exists('c15',1));
+
+//---------------------------------
+$t->start('Load flags');
+
+$flags=Automap::NO_AUTOLOAD;
+$id1=Automap::load(MAP1,$flags);
+$t->check('Cannot autoload from a map with flag NO_AUTOLOAD',!class_exists('c15',1));
+
+$id11=Automap::load(MAP1);
+$t->check('Autoload from a map with previous NO_AUTOLOAD',class_exists('c15',1));
+
+Automap::unload($id1);
+Automap::unload($id11);
+
 //---------------------------------
 $t->start('Success handler');
 
+$id1=Automap::load(MAP1);
+
 //------
 
-function success_func($stype,$sname,$map)
+function success_func($entry,$id)
 {
 $t=$GLOBALS['t'];
+$stype=$entry['stype'];
+$sname=$entry['symbol'];
+$map=Automap::map($id);
 
 $t->check('Handler receives the right map',$map->symbol_count()===MAP1_SYMCOUNT);
 $t->check('Handler receives the right symbol type',$stype===Automap::T_CLASS);
 $t->check('Handler receives the right symbol name',$sname==='c14');
+$t->check('Success handler: checking file existence (absolute path)',file_exists($entry['path']));
 
 $sym=$map->get_symbol($stype,$sname);
 
@@ -209,8 +217,7 @@ $t->check('Success handler: get_symbol(): returned element is array',is_array($s
 $t->check('Success handler: get_symbol() returns correct symbol type',$sym['stype']===Automap::T_CLASS);
 $t->check('Success handler: get_symbol() returns correct symbol name',$sym['symbol']==='c14');
 $t->check('Success handler: get_symbol() returns correct path type',$sym['ptype']===Automap::F_SCRIPT);
-$t->check('Success handler: get_symbol(): returned correct relative path',$sym['rpath']==='src1/file14.php');
-$t->check('Success handler: get_symbol(): checking file existence (absolute path)',file_exists($sym['path']));
+$t->check('Success handler: get_symbol(): returned correct relative path',$sym['rpath']==='src1/classes/file14.php');
 $t->check('Success handler: get_symbol(): checking file existence (relative path)',file_exists($sym['rpath']));
 
 $GLOBALS['success_handler_called']=true;

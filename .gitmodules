@@ -1,0 +1,3 @@
+[submodule "submodules/phool"]
+	path = submodules/phool
+	url = git@github.com:flaupretre/phool.git

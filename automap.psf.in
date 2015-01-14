@@ -1,12 +1,19 @@
 
-merge / $(PSF_DIR)/src
+add -C src  .
 
-%options ---------------------------------------------------------------------
+# Submodules
+
+# Phool
+
+add -t submodules/phool -C submodules/phool/src/classes .
+
+#---------------------------------------------------------------------
+%options
 
 name           : Automap
 summary        : Automap Runtime and Creator tool
-version        : '2.1'
-release        : 0
+version        : '@SOFTWARE_VERSION@'
+release        : '@SOFTWARE_RELEASE@'
 crc_check      : true
 license        : Apache License Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>
 copyright      : (c) F. Laupretre
@@ -15,3 +22,4 @@ url            : http://automap.tekwire.net
 packager       : F. Laupretre <mailto:phk@tekwire.net>
 cli_run_script : /scripts/main.php
 license_prefix : /etc/license
+plain_prolog   : true

@@ -28,10 +28,6 @@
 */
 //============================================================================
 
-// <PLAIN_FILE> //---------------
-require_once(dirname(__FILE__).'/Automap.php');
-// </PLAIN_FILE> //---------------
-
 // For PHP version < 5.3.0
 
 if (!defined('T_NAMESPACE')) define('T_NAMESPACE',-2);
@@ -45,8 +41,8 @@ if (!class_exists('Automap_Creator',false))
 
 class Automap_Creator
 {
-const VERSION='2.1.0';		// Version set into the maps I produce
-const MIN_VERSION='2.0.0'; // Minimum version of runtime to understand the maps I produce
+const VERSION='3.0.0';		// Version set into the maps I produce
+const MIN_VERSION='3.0.0'; // Minimum version of runtime to understand the maps I produce
 
 //---------
 
@@ -54,56 +50,30 @@ private $symbols=array();	// array($key => array('T' => <symbol type>
 							// , 'n' => <case-sensitive symbol name>
 							// , 't' => <target type>, 'p' => <target path>))
 private $options=array();
-private $flags;
-private $path=null;
 
 //---------
-// Utilities (taken from PHK_Util)
 
-private static function atomic_write($path,$data)
+public function option($opt)
 {
-$tmpf=tempnam(dirname($path),'tmp_');
-
-if (file_put_contents($tmpf,$data)!=strlen($data))
-	throw new Exception($tmpf.": Cannot write");
-
-// Windows does not support renaming to an existing file (looses atomicity)
-
-if (PHK_Util::is_windows()) @unlink($path);
-
-if (!rename($tmpf,$path))
-	{
-	unlink($tmpf);
-	throw new Exception($path.': Cannot replace file');
-	}
-}
-
-//---------
-// Creates an empty object
-
-public function __construct($path=null,$flags=0)
-{
-$this->flags=$flags;
-
-$this->path=$path;
-if ((!is_null($path))&&is_file($path)) $this->read_map_file($path);
+return (isset($this->options[$opt]) ? $this->options[$opt] : null);
 }
 
 //---------
 
-public function add_option($key,$value)
+public function set_option($option,$value)
 {
-$this->options[$key]=$value;
+PHO_Display::trace("Setting option $option=$value");
+
+$this->options[$option]=$value;
 }
 
 //---------
 
-public function set_options($options)
+public function unset_option($option)
 {
-if (!is_array($options))
-	throw new Exception("set_options: arg should be an array");
+PHO_Display::trace("Unsetting option $option");
 
-$this->options=$options;
+if (isset($this->options[$option])) unset($this->options[$option]);
 }
 
 //---------
@@ -111,15 +81,25 @@ $this->options=$options;
 private function add_entry($va)
 {
 $key=Automap::key($va['T'],$va['n']);
+PHO_Display::debug("Adding symbol (key=<$key>, name=".$va['n']
+	.", target=".$va['p'].' ('.$va['t'].')');
+
 if (isset($this->symbols[$key]))
 	{
 	$entry=$this->symbols[$key];
-	echo "** Warning: Symbol multiply defined: ".Automap::type_to_string($va['T'])
-		.' '.$va['n']."\n	Previous location: ".Automap::type_to_string($entry['t'])
-		.' '.$entry['p']."\n	New location (ignored): ".Automap::type_to_string($va['t'])
-		.' '.$va['p']."\n";
+	// If same target, it's OK
+	if (($entry['t']!=$va['t'])||($entry['p']!=$va['p']))
+		{
+		echo "** Warning: Symbol multiply defined: "
+			.Automap::type_to_string($va['T'])
+			.' '.$va['n']."\n	Previous location: "
+			.Automap::type_to_string($entry['t'])
+			.' '.$entry['p']."\n	New location (replacing): "
+			.Automap::type_to_string($va['t'])
+			.' '.$va['p']."\n";
+		}
 	}
-else $this->symbols[$key]=$va;
+$this->symbols[$key]=$va;
 }
 
 //---------
@@ -139,6 +119,7 @@ return count($this->symbols);
 }
 
 //---------
+// Build an array containing only target information
 
 private static function mk_varray($ftype,$fpath)
 {
@@ -146,21 +127,22 @@ return array('t' => $ftype, 'p' => $fpath);
 }
 
 //---------
-// Remove the entries contaning $value
+// Remove the entries matching a given target
 
-private function cleanup($va)
+private function unregister_target($va)
 {
-$ftype=$va['t'];
-$fpath=$va['p'];
+$type=$va['t'];
+$path=$va['p'];
+PHO_Display::debug("Unregistering path (type=$type, path=$path)");
+
 foreach(array_keys($this->symbols) as $key)
 	{
-	if (($this->symbols[$key]['t']===$ftype)&&($this->symbols[$key]['p']===$fpath))
+	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
 		unset($this->symbols[$key]);
 	}
 }
 
 //---------
-// Ensures each key is present only once
 
 public function serialize()
 {
@@ -171,20 +153,22 @@ foreach($this->symbols as $key => $va)
 	}
 $data=serialize(array('map' => $bmap, 'options' => $this->options));
 
-return Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
-	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+53,8).$data;
+$buf=Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
+	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+61,8)
+	.'00000000'.$data;
+return substr_replace($buf,hash('crc32',$buf),53,8); // Insert CRC
 }
 
 //---------
 
-public function dump($path=null)
+public function save($path)
 {
-if (is_null($path)) $path=$this->path;
 if (is_null($path)) throw new Exception('No path provided');
 
 $data=$this->serialize();
 
-self::atomic_write($path,$data);
+PHO_Display::trace("$path: Writing map file");
+PHO_File::atomic_write($path,$data);
 }
 
 //---------
@@ -193,7 +177,7 @@ self::atomic_write($path,$data);
 
 public function register_extension_file($file)
 {
-echo "INFO: Registering extension file: $file\n";
+PHO_Display::trace("Registering extension : $file");
 
 $va=self::mk_varray(Automap::F_EXTENSION,$file);
 $this->cleanup($va);
@@ -245,7 +229,7 @@ if (method_exists($ext,'getTraits')) // Compatibility
 public function register_extension_dir()
 {
 $ext_dir=ini_get('extension_dir');
-echo "INFO: Scanning directory : $ext_dir\n";
+PHO_Display::trace("Scanning extensions directory ($ext_dir)\n");
 
 //-- Multiple passes because of possible dependencies
 //-- Loop until everything is loaded or we cannot load anything more
@@ -273,10 +257,8 @@ while(true)
 
 if (count($f_failed))
 	{
-	$msg="These extensions were not registered because they could"
-		." not be loaded :";
-	foreach($f_failed as $file)	$msg.=" $file";
-	trigger_error($msg,E_USER_WARNING);
+	foreach($f_failed as $file)
+		PHO_Display::warning("$file: This extension was not registered (load failed)");
 	}
 }
 
@@ -292,12 +274,12 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 
 private static function normalize_rpath($rpath)
 {
-return trim(str_replace('\\','/',$rpath),'/\\');
+return rtrim(str_replace('\\','/',$rpath),'/\\');
 }
 
 //---------
 
-private static function combine_path($dpath,$fpath)
+private static function combine_rpaths($dpath,$fpath)
 {
 if ($dpath==='.') return $fpath;
 return $dpath.(($dpath==='') ? '' : '/').$fpath;
@@ -307,14 +289,14 @@ return $dpath.(($dpath==='') ? '' : '/').$fpath;
 
 public function register_script($fpath,$rpath)
 {
-//echo "INFO: Registering script $fpath as $rpath\n";//TRACE
+PHO_Display::trace("Registering script $fpath as $rpath");
 
-if (($buf=php_strip_whitespace($fpath))==='') return;
+if (($buf=php_strip_whitespace($fpath))==='') return; // Empty file
 
 // Force relative path
 
 $va=self::mk_varray(Automap::F_SCRIPT,self::normalize_rpath($rpath));
-$this->cleanup($va);
+$this->unregister_target($va);
 
 $symbols=array();
 
@@ -323,7 +305,7 @@ try
 	$symbols=self::get_script_symbols(file_get_contents($fpath),$fpath);
 	}
 catch (Exception $e)
-	{ throw new Exception("File $fpath ".$e->getMessage()); }
+	{ throw new Exception("$fpath ".$e->getMessage()); }
 
 foreach($symbols as $sa)
 	{
@@ -344,8 +326,7 @@ $a[]=array($type,$symbol);
 }
 
 //---------
-//-- This function extracts the function, class, and constant names out of a
-//-- PHP script.
+//-- This function extracts the symbols defined in a PHP script.
 
 //-- States :
 
@@ -365,10 +346,9 @@ const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
 
 //----
 
-public static function get_script_symbols($buf,$path=null)
+public static function get_script_symbols($buf)
 {
 $buf=str_replace("\r",'',$buf);
-$prefix=(is_null($path) ? '' : $path.' : ');
 
 $symbols=array();
 $exclude_list=array();
@@ -503,7 +483,7 @@ foreach(token_get_all($buf) as $token)
 			
 
 		case self::ST_FUNCTION_FOUND:
-			if (($state==self::ST_FUNCTION_FOUND)&&($tnum==-1)&&($tvalue=='('))
+			if (($tnum==-1)&&($tvalue=='('))
 				{ // Closure : Ignore (no function name to get here)
 				$state=self::ST_OUT;
 				break;
@@ -516,14 +496,8 @@ foreach(token_get_all($buf) as $token)
 				{
 				self::add_symbol($symbols,$state,self::combine_ns_symbol($ns,$tvalue),$exclude_list);
 				}
-			else
-				{
-				trigger_error($prefix.'Unrecognized token for class/function definition'
-				."(type=$tnum ($tname);value='$tvalue'). String expected"
-					,E_USER_WARNING);
-				$state=self::ST_OUT;
-				break;
-				}
+			else throw new Exception('Unrecognized token for class/function definition'
+				."(type=$tnum ($tname);value='$tvalue'). String expected");
 			$state=self::ST_SKIPPING_BLOCK_NOSTRING;
 			$block_level=0;
 			break;
@@ -534,9 +508,8 @@ foreach(token_get_all($buf) as $token)
 				self::add_symbol($symbols,Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue)
 					,$exclude_list);
 				}
-			else trigger_error($prefix.'Unrecognized token for constant definition '
-				."(type=$tnum ($tname);value='$tvalue'). String expected"
-					,E_USER_WARNING);
+			else throw new Exception('Unrecognized token for constant definition'
+				."(type=$tnum ($tname);value='$tvalue'). String expected");
 			$state=self::ST_OUT;
 			break;
 
@@ -568,13 +541,8 @@ foreach(token_get_all($buf) as $token)
 
 		case self::ST_DEFINE_FOUND:
 			if ($tnum==-1 && $tvalue=='(') $state=self::ST_DEFINE_2;
-			else
-				{
-				trigger_error($prefix.'Unrecognized token for constant definition '
-					."(type=$tnum ($tname);value='$tvalue'). Expected '('"
-					,E_USER_WARNING);
-				$state=self::ST_SKIPPING_TO_EOL;
-				}
+			else throw new Exception('Unrecognized token for constant definition'
+				."(type=$tnum ($tname);value='$tvalue'). Expected '('");
 			break;
 
 		case self::ST_DEFINE_2:
@@ -586,9 +554,8 @@ foreach(token_get_all($buf) as $token)
 				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
 				self::add_symbol($symbols,Automap::T_CONSTANT,$tvalue,$exclude_list);
 				}
-			else trigger_error($prefix.'Unrecognized token for constant definition '
-				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant"
-				,E_USER_WARNING);
+			else throw new Exception('Unrecognized token for constant definition'
+				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant");
 			$state=self::ST_SKIPPING_TO_EOL;
 			break;
 
@@ -608,33 +575,33 @@ return (substr(file_get_contents($path),0,strlen(Automap::MAGIC))===Automap::MAG
 }
 
 //---------
-// Ignore map files (must be merged explicitely when desired)
+// Recursive scan retains only PHP source files (file suffix must contain 'php')
+// Only dirs and regular files are considered. Other types are ignored.
 
 public function register_path($fpath,$rpath)
 {
+PHO_Display::trace("Registering path <$fpath> as <$rpath>");
+
 switch($type=filetype($fpath))
 	{
 	case 'dir':
-		foreach(PHK_UTIL::scandir($fpath) as $entry)
+		foreach(PHO_File::scandir($fpath) as $entry)
 			{
-			$this->register_path(PHK_Util::combine_path($fpath,$entry)
-				,PHK_Util::combine_path($rpath,$entry));
+			$epath=PHO_File::combine_path($fpath,$entry);
+			if (is_file($epath) && strpos(PHO_File::file_suffix($entry),'php')===false)
+				PHO_Display::trace("Ignoring file $epath (not a PHP script)");
+			else
+				$this->register_path($epath,PHO_File::combine_path($rpath,$entry));
 			}
 		break;
 
 	case 'file':
-		if (PHK::file_is_package($fpath))
-			{
-			$this->register_phk($fpath,$rpath);
-			}
-		else
-			{
-			if (!self::is_mapfile($fpath)) $this->register_script($fpath,$rpath);
-			}
+		if (PHK::file_is_package($fpath)) $this->register_phk($fpath,$rpath);
+		else $this->register_script($fpath,$rpath);
 		break;
 
 	default:
-		echo "Ignoring file $fpath (type=$type)\n";
+		PHO_Display::trace("Ignoring file $fpath (type=$type)");
 	}
 }
 
@@ -642,25 +609,29 @@ switch($type=filetype($fpath))
 
 public function read_map_file($fpath)
 {
-$mnt=Automap::mount($fpath);
-$map=Automap::instance($mnt);
+PHO_Display::trace("Reading map file ($fpath)");
+
+$id=Automap::load($fpath,Automap::NO_AUTOLOAD);
+$map=Automap::map($id);
 $this->options=$map->options();
 $this->symbols=array();
 $this->merge_map_symbols($map);
-Automap::umount($mnt);
+Automap::unload($id);
 }
 
 //---------
-
-public function merge_map_file($fpath,$rpath)
-{
-$mnt=Automap::mount($fpath);
-$map=Automap::instance($mnt);
-$this->merge_map_symbols($map,$rpath);
-Automap::umount($mnt);
-}
-
-
+// Note: This is off until a smart solution to combine base paths is found.
+//
+//public function merge_map_file($fpath,$rpath)
+//{
+//PHO_Display::debug("Merging map file from $fpath (rpath=$rpath)");
+//
+//$id=Automap::load($fpath);
+//$map=Automap::map($id);
+//$this->merge_map_symbols($map,$rpath);
+//Automap::umount($mnt);
+//}
+//
 //---------
 
 public function merge_map_symbols($map,$rpath='.')
@@ -668,49 +639,53 @@ public function merge_map_symbols($map,$rpath='.')
 foreach($map->symbols() as $va)
 	{
 	$this->add_ts_entry($va['stype'],$va['symbol'],self::mk_varray($va['ptype']
-		,self::combine_path($rpath,$va['rpath'])));
+		,self::combine_rpaths($rpath,$va['rpath'])));
 	}
 }
 
 //---------
+// Register a PHK package
+//
+// Note : A package and its map have the same load ID
 
 public function register_phk($fpath,$rpath)
 {
+PHO_Display::trace("Registering PHK package $fpath as $rpath");
+
 $rpath=self::normalize_rpath($rpath);
+PHO_Display::debug("Registering PHK package (path=$fpath, rpath=$rpath)");
+$va=self::mk_varray(Automap::F_PACKAGE,$rpath);
+$this->unregister_target($va);
 
-$this->cleanup(self::mk_varray(Automap::F_PACKAGE,$rpath));
-
-// We use the same mount point for packages and automaps
-
-$mnt=PHK_Mgr::mount($fpath,PHK::F_NO_MOUNT_SCRIPT);
-
-if (Automap::is_mounted($mnt)) // If package has an automap
+$mnt=PHK_Mgr::mount($fpath,PHK::NO_MOUNT_SCRIPT);
+$pkg=PHK_Mgr::instance($mnt);
+$id=$pkg->automap_id();
+if ($id) // If package has an automap
 	{
-	foreach(Automap::instance($mnt)->symbols() as $sym)
-		{
-		//var_dump($key);//TRACE
-		$va=array();
-		$va['t']=Automap::F_PACKAGE;
-		$va['p']=$rpath;
+	foreach(Automap::instance($id)->symbols() as $sym)
 		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);
-		}
 	}
 }
 
 //---------
 
-public function import($path)
+public function import($path=null)
 {
-$fp=is_null($path) ? STDIN : fopen($path,'r');
+if (is_null($path)) $path="php://stdin";
+
+PHO_Display::trace("Importing map from $path");
+
+$fp=fopen($path,'r');
+if (!$fp) throw new Exception("$path: Cannot open for reading");
 
 while(($line=fgets($fp))!==false)
 	{
 	if (($line=trim($line))==='') continue;
-	list($stype,$sname,$ftype,$fname)=explode(' ',$line);
+	list($stype,$sname,$ftype,$fname)=explode('|',$line);
 	$va=self::mk_varray($ftype,$fname);
 	$this->add_ts_entry($stype,$sname,$va);
 	}
-if (!is_null($path)) fclose($fp);
+fclose($fp);
 }
 
 //---------

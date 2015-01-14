@@ -17,13 +17,30 @@
 //
 //=============================================================================
 
-ini_set('display_errors',true);
+// main.php includes every class scripts
 
-//require_once(dirname(__FILE__).'/../classes/Automap_Cmd.php');
+// <PHK:ignore>
+require(dirname(__FILE__).'/../classes/external/phool/PHO_Display.php');
+require(dirname(__FILE__).'/../classes/external/phool/PHO_File.php');
+require(dirname(__FILE__).'/../classes/external/phool/PHO_Getopt.php');
+require(dirname(__FILE__).'/../classes/external/phool/PHO_Options.php');
+require(dirname(__FILE__).'/../classes/external/phool/PHO_Util.php');
+require(dirname(__FILE__).'/../classes/Automap.php');
+require(dirname(__FILE__).'/../classes/Automap_Cmd.php');
+require(dirname(__FILE__).'/../classes/Automap_Cmd_Options.php');
+require(dirname(__FILE__).'/../classes/Automap_Creator.php');
+require(dirname(__FILE__).'/../classes/Automap_Display.php');
+require(dirname(__FILE__).'/../classes/Automap_Map.php');
+require(dirname(__FILE__).'/../classes/Automap_Tools.php');
+// <PHK:end>
 
 try
 {
-Automap_Cmd::run($_SERVER['argv']);
+ini_set('display_errors',true);
+
+$args=$_SERVER['argv'];
+array_shift($args);
+Automap_Cmd::run($args);
 }
 catch(Exception $e)
 	{
