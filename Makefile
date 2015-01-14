@@ -2,7 +2,6 @@
 #==============================================================================
 
 TARGETS = $(PRODUCT).phk
-SOURCE_DIR = src
 BUILD_DIR = build
 EXTRA_CLEAN = $(PRODUCT).psf $(PRODUCT)
 
@@ -23,7 +22,7 @@ clean: clean_base clean_doc clean_distrib clean_test clean_examples
 #--- How to build the package
 
 $(PRODUCT).phk: $(PRODUCT).psf
-	$(PHK_BUILD) $@ -d SOURCE_DIR=$(SOURCE_DIR)
+	$(PHK_BUILD) $@
 
 #--- Tests
 
@@ -62,12 +61,5 @@ $(DISTRIB): base doc clean_test clean_examples
 
 clean_distrib:
 	/bin/rm -f $(DISTRIB)
-
-#--- Sync external code - Dev private
-
-sync_external:
-	for i in PHO_Display PHO_File PHO_Getopt PHO_Util PHO_Options ; do \
-		cp -p ../../../phool/public/src/$$i.php src/classes/external/phool ;\
-	done
 
 #-----------------------------------------------------------------------------

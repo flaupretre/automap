@@ -1,5 +1,11 @@
 
-add --directory $(SOURCE_DIR) -s --compression bzip2  .
+add -C src  .
+
+# Submodules
+
+# Phool
+
+add -t submodules/phool -C submodules/phool/src/classes .
 
 #---------------------------------------------------------------------
 %options
