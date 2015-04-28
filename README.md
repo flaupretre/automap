@@ -8,4 +8,4 @@ At runtime, map files are loaded by the main script and then used
 to resolve undefined symbols and load the corresponding PHP script
 files.
 
-More information on [the project website](http://automap.tekwire.net) or in the [wiki](https://github.com/flaupretre/automap/wiki).
+More information on [the project website](http://automap.tekwire.net).

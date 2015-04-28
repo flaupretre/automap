@@ -24,7 +24,7 @@ test: base
 	$(PHPCMD) test.php
 
 mem_test: base
-	valgrind --tool=memcheck --log-file=php.log --leak-check=full \
+	USE_ZEND_ALLOC=0 valgrind --tool=memcheck --log-file=php.log --leak-check=full \
 		--track-origins=yes $(PHP) test.php
 
 #-----------------------------------------------------------------------------
