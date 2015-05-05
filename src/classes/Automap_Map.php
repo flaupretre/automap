@@ -36,25 +36,19 @@
 */
 //===========================================================================
 
-if (!class_exists('Automap_Map',false)) 
-{
 //===========================================================================
 /**
-* Automap runtime class
+* Automap map instance
 *
-* This class allows to autoload PHP scripts and extensions by extension,
-* constant, class, or function name.
-*
-* Static methods use map IDs. A map ID is a non null positive number, uniquely
-* identifying a loaded map.
-*
-* Used for plain maps and package-wrapped maps. So, this class must support
-* plain script files and packages.
+* This class allows to open and examine a map file. WHen the PECL extension is
+* not present, it is used for autoloading.
 *
 * @package Automap
 */
 //===========================================================================
 
+if (!class_exists('Automap_Map',false)) 
+{
 class Automap_Map
 {
 /** The path of the map file (as given at creation time) */

@@ -374,7 +374,7 @@ foreach (self::$failure_handlers as $callable) $callable($type,$name);
 * succeeds.
 *
 * The success handler receives two arguments : An array as returned by the
-* get_symbol() method, and the map object where the symbol was found.
+* get_symbol() method, and the ID of the map where the symbol was found.
 *
 * There is no limit on the number of success handlers that can be registered.
 *

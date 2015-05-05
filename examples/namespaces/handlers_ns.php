@@ -16,7 +16,7 @@ echo 'Automap could not find a '.\Automap::type_to_string($type)
 //---------------------------
 // This is a success handler
 
-function success($entry,$map)
+function success($entry,$id)
 {
 $stype=$entry['stype'];
 
@@ -29,7 +29,7 @@ echo "Automap loaded "
 	.' '
 	.$entry['path']
 	."\n";
-echo 'Symbol was found in this map: '.$map->path()."\n";
+echo 'Symbol was found in this map: '.\Automap::map($id)->path()."\n";
 }
 
 //---------------------------
@@ -74,7 +74,7 @@ var_dump(\NS5\FOO);
 
 //--- Unload map
 
-$map=\Automap::instance($id);
+$map=\Automap::map($id);
 \Automap::unload($id);
 
 try

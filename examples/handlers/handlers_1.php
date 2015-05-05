@@ -19,12 +19,12 @@ echo 'Automap could not find a '.Automap::type_to_string($type)
 //---------------------------
 // This is a success handler
 
-function success($entry,$map)
+function success($entry,$id)
 {
-$stype=$entry['stype'];
+$map=Automap::map($id);
 
 echo "Automap loaded "
-	.Automap::type_to_string($stype)
+	.Automap::type_to_string($entry['stype'])
 	.' \''
 	.$entry['symbol']
 	.'\' from '
@@ -62,7 +62,7 @@ check_loaded($id);	// Yes
 
 check_loaded(1234);	// No
 
-$map=Automap::instance($id);
+$map=Automap::map($id);
 
 Automap::unload($id);
 

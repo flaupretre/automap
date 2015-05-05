@@ -28,13 +28,6 @@
 */
 //============================================================================
 
-// For PHP version < 5.3.0
-
-if (!defined('T_NAMESPACE')) define('T_NAMESPACE',-2);
-if (!defined('T_NS_SEPARATOR'))	define('T_NS_SEPARATOR',-3);
-if (!defined('T_CONST'))	define('T_CONST',-4);
-if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
-
 if (!class_exists('Automap_Creator',false)) 
 {
 //------------------------------------------
@@ -180,45 +173,16 @@ public function register_extension_file($file)
 PHO_Display::trace("Registering extension : $file");
 
 $va=self::mk_varray(Automap::F_EXTENSION,$file);
-$this->cleanup($va);
+$this->unregister_target($va);
 
-$extension_list=get_loaded_extensions();
+$parser=new Automap_Parser;
+$parser->parse_extension($file);
 
-@dl($file);
-$a=array_diff(get_loaded_extensions(),$extension_list);
-if (($ext_name=array_pop($a))===NULL)
-	throw new Exception($file.': Cannot load extension');
-
-$ext=new ReflectionExtension($ext_name);
-
-self::add_ts_entry(Automap::T_EXTENSION,$ext_name,$va);
-
-foreach($ext->getFunctions() as $func)
-	self::add_ts_entry(Automap::T_FUNCTION,$func->getName(),$va);
-
-foreach(array_keys($ext->getConstants()) as $constant)
-	self::add_ts_entry(Automap::T_CONSTANT,$constant,$va);
-
-foreach($ext->getClasses() as $class)
+foreach($parser->symbols() as $sym)
 	{
-	self::add_ts_entry(Automap::T_CLASS,$class->getName(),$va);
+	$this->add_ts_entry($sym['type'],$sym['name'],$va);
 	}
-	
-if (method_exists($ext,'getInterfaces')) // Compatibility
-	{
-	foreach($ext->getInterfaces() as $interface)
-		{
-		self::add_ts_entry(Automap::T_CLASS,$interface->getName(),$va);
-		}
-	}
-
-if (method_exists($ext,'getTraits')) // Compatibility
-	{
-	foreach($ext->getTraits() as $trait)
-		{
-		self::add_ts_entry(Automap::T_CLASS,$trait->getName(),$va);
-		}
-	}
+unset($parser);
 }
 
 //---------
@@ -262,22 +226,30 @@ if (count($f_failed))
 	}
 }
 
-//--
-
-private static function combine_ns_symbol($ns,$symbol)
-{
-$ns=trim($ns,'\\');
-return $ns.(($ns==='') ? '' : '\\').$symbol;
-}
-
-//---------
+//---------------------------------
+/**
+* Normalize a relative path
+*
+* 1. Replace backslashes with forward slashes.
+* 2. Remove leading and trailing slashes
+*
+* @param string $rpath the relative path to normalize
+* @return string the normalized relative path
+*/
 
 private static function normalize_rpath($rpath)
 {
 return rtrim(str_replace('\\','/',$rpath),'/\\');
 }
 
-//---------
+//---------------------------------
+/**
+* Combine two relative paths
+*
+* @param string $dpath Left path. Ignored if '.' or empty string
+* @param string $dpath Right path
+* @return string Combined path
+*/
 
 private static function combine_rpaths($dpath,$fpath)
 {
@@ -291,280 +263,19 @@ public function register_script($fpath,$rpath)
 {
 PHO_Display::trace("Registering script $fpath as $rpath");
 
-if (($buf=php_strip_whitespace($fpath))==='') return; // Empty file
-
 // Force relative path
 
 $va=self::mk_varray(Automap::F_SCRIPT,self::normalize_rpath($rpath));
 $this->unregister_target($va);
 
-$symbols=array();
+$parser=new Automap_Parser;
+$parser->parse_script_file($fpath);
 
-try
+foreach($parser->symbols() as $sym)
 	{
-	$symbols=self::get_script_symbols(file_get_contents($fpath),$fpath);
+	$this->add_ts_entry($sym['type'],$sym['name'],$va);
 	}
-catch (Exception $e)
-	{ throw new Exception("$fpath ".$e->getMessage()); }
-
-foreach($symbols as $sa)
-	{
-	$this->add_ts_entry($sa[0],$sa[1],$va);
-	}
-}
-
-//----
-
-private static function add_symbol(&$a,$type,$symbol,$exclude_list)
-{
-foreach($exclude_list as $e)
-	{
-	if (($e[0]===$type)&&($e[1]===$symbol)) return;
-	}
-
-$a[]=array($type,$symbol);
-}
-
-//---------
-//-- This function extracts the symbols defined in a PHP script.
-
-//-- States :
-
-const ST_OUT=1;						// Upper level
-const ST_FUNCTION_FOUND=Automap::T_FUNCTION; // Found 'function'. Looking for name
-const ST_SKIPPING_BLOCK_NOSTRING=3; // In block, outside of string
-const ST_SKIPPING_BLOCK_STRING=4;	// In block, in string
-const ST_CLASS_FOUND=Automap::T_CLASS;	// Found 'class'. Looking for name
-const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
-const ST_DEFINE_2=7;				// Found '('. Looking for constant name
-const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
-const ST_NAMESPACE_FOUND=9;			// Found 'namespace'. Looking for <whitespace>
-const ST_NAMESPACE_2=10;			// Found 'namespace' and <whitespace>. Looking for name
-const ST_CONST_FOUND=11;			// Found 'const'. Looking for name
-
-const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
-
-//----
-
-public static function get_script_symbols($buf)
-{
-$buf=str_replace("\r",'',$buf);
-
-$symbols=array();
-$exclude_list=array();
-
-// Register explicit declarations
-//Format:
-//	<double-slash> <Automap>:declare <type> <value>
-//	<double-slash> <Automap>:ignore <type> <value>
-//	<double-slash> <Automap>:no-auto-index
-//	<double-slash> <Automap>:skip-blocks
-
-$skip_blocks=false;
-$exclude_list=array();
-$regs=false;
-$line_nb=0;
-
-try {
-foreach(explode("\n",$buf) as $line)
-	{
-	$line_nb++;
-	$line=trim($line);
-	$lin=str_replace('	',' ',$line);	// Replace tabs with spaces
-	if (!preg_match(self::AUTOMAP_COMMENT,$line,$regs)) continue;
-
-	if ($regs[1]=='no-auto-index') return array();
-
-	if ($regs[1]=='skip-blocks')
-		{
-		$skip_blocks=true;
-		continue;
-		}
-	$type_string=strtolower(strtok($regs[2],' '));
-	$name=strtok(' ');
-	if ($type_string===false || $name===false) throw new Exception('Needs 2 args');
-	$type=Automap::string_to_type($type_string);
-	switch($regs[1])
-		{
-		case 'declare': // Add entry, even if set to be 'ignored'.
-			self::add_symbol($symbols,$type,$name,array());
-			break;
-
-		case 'ignore': // Ignore this symbol in autoindex stage.
-			$exclude_list[]=array($type,$name);
-			break;
-
-		default:
-			throw new Exception($regs[1].': Invalid Automap command');
-		}
-	}
-} catch (Exception $e)
-	{ throw new Exception("(line $line_nb): ".$e->getMessage()); }
-
-//-- Auto index
-
-$block_level=0;
-$state=self::ST_OUT;
-$name='';
-$ns='';
-
-foreach(token_get_all($buf) as $token)
-	{
-	if (is_string($token))
-		{
-		$tvalue=$token;
-		$tnum=-1;
-		$tname='String';
-		}
-	else
-		{
-		list($tnum,$tvalue)=$token;
-		$tname=token_name($tnum);
-		}
-		
-	if ($tnum==T_COMMENT) continue;
-	if (($tnum==T_WHITESPACE)&&($state!=self::ST_NAMESPACE_FOUND)) continue;
-
-	//echo "$tname <$tvalue>\n";//TRACE
-	switch($state)
-		{
-		case self::ST_OUT:
-			switch($tnum)
-				{
-				case T_FUNCTION:
-					$state=self::ST_FUNCTION_FOUND;
-					break;
-				case T_CLASS:
-				case T_INTERFACE:
-				case T_TRAIT:
-					$state=self::ST_CLASS_FOUND;
-					break;
-				case T_NAMESPACE:
-					$state=self::ST_NAMESPACE_FOUND;
-					$name='';
-					break;
-				case T_CONST:
-					$state=self::ST_CONST_FOUND;
-					break;
-				case T_STRING:
-					if ($tvalue=='define') $state=self::ST_DEFINE_FOUND;
-					$name='';
-					break;
-				// If this flag is set, we skip anything enclosed
-				// between {} chars, ignoring any conditional block.
-				case -1:
-					if ($tvalue=='{' && $skip_blocks)
-						{
-						$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-						$block_level=1;
-						}
-					break;
-				}
-			break;
-
-		case self::ST_NAMESPACE_FOUND:
-			$state=($tnum==T_WHITESPACE) ? self::ST_NAMESPACE_2 : self::ST_OUT;
-			break;
-			
-		case self::ST_NAMESPACE_2:
-			switch($tnum)
-				{
-				case T_STRING:
-					$name .=$tvalue;
-					break;
-				case T_NS_SEPARATOR:
-					$name .= '\\';
-					break;
-				default:
-					$ns=$name;
-					$state=self::ST_OUT;
-				}
-			break;
-			
-
-		case self::ST_FUNCTION_FOUND:
-			if (($tnum==-1)&&($tvalue=='('))
-				{ // Closure : Ignore (no function name to get here)
-				$state=self::ST_OUT;
-				break;
-				}
-			 //-- Function returning ref: keep looking for name
-			 if ($tnum==-1 && $tvalue=='&') break;
-			// No break here !
-		case self::ST_CLASS_FOUND:
-			if ($tnum==T_STRING)
-				{
-				self::add_symbol($symbols,$state,self::combine_ns_symbol($ns,$tvalue),$exclude_list);
-				}
-			else throw new Exception('Unrecognized token for class/function definition'
-				."(type=$tnum ($tname);value='$tvalue'). String expected");
-			$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-			$block_level=0;
-			break;
-
-		case self::ST_CONST_FOUND:
-			if ($tnum==T_STRING)
-				{
-				self::add_symbol($symbols,Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue)
-					,$exclude_list);
-				}
-			else throw new Exception('Unrecognized token for constant definition'
-				."(type=$tnum ($tname);value='$tvalue'). String expected");
-			$state=self::ST_OUT;
-			break;
-
-		case self::ST_SKIPPING_BLOCK_STRING:
-			if ($tnum==-1 && $tvalue=='"')
-				$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-			break;
-
-		case self::ST_SKIPPING_BLOCK_NOSTRING:
-			if ($tnum==-1 || $tnum==T_CURLY_OPEN)
-				{
-				switch($tvalue)
-					{
-					case '"':
-						$state=self::ST_SKIPPING_BLOCK_STRING;
-						break;
-					case '{':
-						$block_level++;
-						//TRACE echo "block_level=$block_level\n";
-						break;
-					case '}':
-						$block_level--;
-						if ($block_level==0) $state=self::ST_OUT;
-						//TRACE echo "block_level=$block_level\n";
-						break;
-					}
-				}
-			break;
-
-		case self::ST_DEFINE_FOUND:
-			if ($tnum==-1 && $tvalue=='(') $state=self::ST_DEFINE_2;
-			else throw new Exception('Unrecognized token for constant definition'
-				."(type=$tnum ($tname);value='$tvalue'). Expected '('");
-			break;
-
-		case self::ST_DEFINE_2:
-			// Remember: T_STRING is incorrect in 'define' as constant name.
-			// Current namespace is ignored in 'define' statement.
-			if ($tnum==T_CONSTANT_ENCAPSED_STRING)
-				{
-				$schar=$tvalue{0};
-				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
-				self::add_symbol($symbols,Automap::T_CONSTANT,$tvalue,$exclude_list);
-				}
-			else throw new Exception('Unrecognized token for constant definition'
-				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant");
-			$state=self::ST_SKIPPING_TO_EOL;
-			break;
-
-		case self::ST_SKIPPING_TO_EOL:
-			if ($tnum==-1 && $tvalue==';') $state=self::ST_OUT;
-			break;
-		}
-	}
-return $symbols;
+unset($parser);
 }
 
 //---------
