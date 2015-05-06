@@ -331,33 +331,37 @@ Automap::unload($id);
 }
 
 //---------
-// Note: This is off until a smart solution to combine base paths is found.
-//
-//public function merge_map_file($fpath,$rpath)
-//{
-//PHO_Display::debug("Merging map file from $fpath (rpath=$rpath)");
-//
-//$id=Automap::load($fpath);
-//$map=Automap::map($id);
-//$this->merge_map_symbols($map,$rpath);
-//Automap::umount($mnt);
-//}
-//
+/**
+* Merge an existing map file into the current map
+*
+* Import symbols only. Options are ignored (including base path).
+*
+* @param string $fpath Path of the map to merge (input)
+* @param Relative path to prepend to map target paths
+* @return null
+*/
+
+public function merge_map_file($fpath,$rpath)
+{
+PHO_Display::debug("Merging map file from $fpath (rpath=$rpath)");
+
+$map=new Automap_Map($fpath);
+$this->merge_map_symbols($map,$rpath);
+}
+
 //---------
 
 public function merge_map_symbols($map,$rpath='.')
 {
 foreach($map->symbols() as $va)
 	{
-	$this->add_ts_entry($va['stype'],$va['symbol'],self::mk_varray($va['ptype']
-		,self::combine_rpaths($rpath,$va['rpath'])));
+	$va['rpath']=self::combine_rpaths($rpath,$va['rpath']);
+	$this->add_entry($va);
 	}
 }
 
 //---------
 // Register a PHK package
-//
-// Note : A package and its map have the same load ID
 
 public function register_phk($fpath,$rpath)
 {
@@ -373,7 +377,7 @@ $pkg=PHK_Mgr::instance($mnt);
 $id=$pkg->automap_id();
 if ($id) // If package has an automap
 	{
-	foreach(Automap::instance($id)->symbols() as $sym)
+	foreach(Automap::map($id)->symbols() as $sym)
 		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);
 	}
 }
