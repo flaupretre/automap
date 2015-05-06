@@ -49,7 +49,7 @@ Available commands :
         regular files and/or directories. Directories are scanned recursively
         and every PHP scripts they contain are scanned.
         Options :
-            -a : If the map file exists, add symbols without recreating it
+            -a : Append. If the map file exists, add symbols without recreating it
             -b <base_path> : Specifies a base path. If relative, the reference
                              is the map file directory.
 
@@ -67,20 +67,20 @@ Available commands :
             -o <path> : path of file to create with exported data. Default is
                         to write to stdout.
 
-    - import [-a] [-i <path>]
+  - import [-a] [-i <path>]
         Import symbols from an exported file
         Options :
             -i <path> : path of file where data will be read. Default is to read
                         from stdin.
             -a : If the map file exists, add symbols without recreating it
 
-    - set_option <name> <value>
+  - set_option <name> <value>
         Sets an option in an existing map
 
-    - unset_option <name>
+  - unset_option <name>
         Unsets an option in an existing map
 
-    - help
+  - help
         Display this message
 
 Global options :
