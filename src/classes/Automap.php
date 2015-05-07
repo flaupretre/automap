@@ -363,6 +363,7 @@ return $id;
 * If the input ID is invalid, it is silently ignored.
 *
 * @param string $id The map ID to unload
+* @return null
 */
 
 public static function unload($id)

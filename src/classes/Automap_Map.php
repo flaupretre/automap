@@ -217,13 +217,17 @@ return count($this->symbols);
 
 private function export_entry($entry)
 {
-return array(
+$a=array(
 	'stype'		=> $entry['T'],
 	'symbol' 	=> $entry['n'],
 	'ptype'		=> $entry['t'],
-	'rpath'		=> $entry['p'],
-	'path'		=> self::combine_path($this->base_path,$entry['p'])
+	'rpath'		=> $entry['p']
 	);
+
+$a['path']=(($a['ptype']===Automap::F_EXTENSION) ? $a['rpath']
+	: self::combine_path($this->base_path,$a['rpath']));
+
+return $a;
 }
 
 //---

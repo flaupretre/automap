@@ -131,7 +131,10 @@ PHO_Display::debug("Unregistering path (type=$type, path=$path)");
 foreach(array_keys($this->symbols) as $key)
 	{
 	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
+		{
+		PHO_DIsplay::debug("Removing $key from symbol table");
 		unset($this->symbols[$key]);
+		}
 	}
 }
 
@@ -228,33 +231,20 @@ if (count($f_failed))
 
 //---------------------------------
 /**
-* Normalize a relative path
+* Normalize a destination path
 *
 * 1. Replace backslashes with forward slashes.
-* 2. Remove leading and trailing slashes
+* 2. Remove trailing slashes
 *
-* @param string $rpath the relative path to normalize
-* @return string the normalized relative path
+* @param string $rpath the path to normalize
+* @return string the normalized path
 */
 
-private static function normalize_rpath($rpath)
+private static function normalize_path($path)
 {
-return rtrim(str_replace('\\','/',$rpath),'/\\');
-}
-
-//---------------------------------
-/**
-* Combine two relative paths
-*
-* @param string $dpath Left path. Ignored if '.' or empty string
-* @param string $dpath Right path
-* @return string Combined path
-*/
-
-private static function combine_rpaths($dpath,$fpath)
-{
-if ($dpath==='.') return $fpath;
-return $dpath.(($dpath==='') ? '' : '/').$fpath;
+$path=rtrim(str_replace('\\','/',$path),'/');
+if ($path=='') $path='/';
+return $path;
 }
 
 //---------
@@ -265,7 +255,7 @@ PHO_Display::trace("Registering script $fpath as $rpath");
 
 // Force relative path
 
-$va=self::mk_varray(Automap::F_SCRIPT,self::normalize_rpath($rpath));
+$va=self::mk_varray(Automap::F_SCRIPT,self::normalize_path($rpath));
 $this->unregister_target($va);
 
 $parser=new Automap_Parser;
@@ -355,7 +345,7 @@ public function merge_map_symbols($map,$rpath='.')
 {
 foreach($map->symbols() as $va)
 	{
-	$va['rpath']=self::combine_rpaths($rpath,$va['rpath']);
+	$va['rpath']=PHO_FIle::combine_path($rpath,$va['rpath']);
 	$this->add_entry($va);
 	}
 }
@@ -367,7 +357,7 @@ public function register_phk($fpath,$rpath)
 {
 PHO_Display::trace("Registering PHK package $fpath as $rpath");
 
-$rpath=self::normalize_rpath($rpath);
+$rpath=self::normalize_path($rpath);
 PHO_Display::debug("Registering PHK package (path=$fpath, rpath=$rpath)");
 $va=self::mk_varray(Automap::F_PACKAGE,$rpath);
 $this->unregister_target($va);
