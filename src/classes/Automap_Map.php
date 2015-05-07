@@ -310,6 +310,32 @@ public function show($format=null,$subfile_to_url_function=null)
 return Automap_Display::show($this,$format,$subfile_to_url_function);
 }
 
+//---------------------------------
+/**
+* Transmits map elements to the PECL extension
+*
+* Reserved for internal use
+*
+* The first time a given map file is loaded, it is read by Automap_Map and
+* transmitted to the extension. On subsequent requests, it is retrieved from
+* persistent memory. This allows to code complex features in PHP and maintain
+* the code in a single location.
+*
+* @param string $version The version of data to transmit (reserved for future use)
+* @return array
+*/
+
+public function _pecl_get_map($version)
+{
+$st=array();
+foreach($this->symbols() as $s)
+	{
+	$st[]=array($s['stype'],$s['symbol'],$s['ptype'],$s['path']);
+	}
+
+return $st;
+}
+
 //============ Utilities (taken from external libs) ============
 // We need to duplicate these methods here because this class is included in the
 // PHK PHP runtime, which does not include the PHO_xxx classes.
