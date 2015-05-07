@@ -28,196 +28,6 @@
 */
 //===========================================================================
 
-if (!class_exists('Automap',false)) 
-{
-
-//===========================================================================
-/**
-* A loaded map
-*
-* This class is defined and used only by the PHP implementation of the Automap
-* class. When the PECL extension is present, this class does not exist.
-*/
-
-class Automap_Loaded_Map
-{
-private $map;		// Automap_Map instance;
-private $flags;		// Load flags;
-private $path;		// Map absolute path
-private $base_path;	// Absolute base path
-
-//--------------------------
-
-/**
-* Load a file
-*/
-
-public function __construct($path,$id,$flags=0,$base_path=null)
-{
-$this->path=self::mk_absolute_path($path);
-$this->map=new Automap_Map($this->path,$flags);
-$this->flags=$flags;
-
-if (!is_null($base_path)) $this->base_path=$base_path;
-else $this->base_path=self::combine_path(dirname($this->path)
-	,$this->map->option('base_path'),true);
-}
-
-//-------
-
-public function __destruct()
-{
-unset($this->map);
-}
-
-//-----
-
-public function map() { return $this->map; }
-public function flags() { return $this->flags; }
-public function base_path() { return $this->base_path; }
-
-//-------
-// We need to use combine_path() because the registered path can be absolute
-
-public function get_symbol($type,$name)
-{
-$res=$this->map->get_symbol($type,$name);
-if ($res===false) return false;
-$res['path']=self::combine_path($this->base_path,$res['rpath']);
-return $res;
-}
-
-//-------
-/**
-* Try to resolve a symbol using this map
-*
-* @return exported entry if found, false if not found
-*/
-
-public function resolve($type,$name,$id)
-{
-if (($this->flags & Automap::NO_AUTOLOAD)
-		|| (($entry=$this->get_symbol($type,$name))===false)) return false;
-
-//-- Found
-
-$path=$entry['path']; // Absolute path
-switch($entry['ptype'])
-	{
-	case Automap::F_EXTENSION:
-		if (!dl($path)) return false;
-		break;
-
-	case Automap::F_SCRIPT:
-		//PHO_Display::info("Loading script file : $path");//TRACE
-		{ require($path); }
-		break;
-
-	case Automap::F_PACKAGE:
-		// Remove E_NOTICE messages if the test script is a package - workaround
-		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
-		// In case of embedded packages and maps, the returned ID corresponds to
-		// the map where the symbol was finally found.
-	
-		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
-		$mnt=require($path);
-		error_reporting($errlevel);
-		$pkg=PHK_Mgr::instance($mnt);
-		$id=$pkg->automap_id();
-		return Automap::lmap($id)->resolve($type,$name,$id);
-		break;
-
-	default:
-		throw new Exception('<'.$entry['ptype'].'>: Unknown target type');
-	}
-return array($id,$entry);
-}
-
-//============ Utilities (taken from external libs) ============
-// We need to duplicate these methods here because this class is included in the
-// PHK PHP runtime, which does not include the PHO_xxx classes.
-
-//----- Taken from PHO_File
-/**
-* Combines a base path with another path
-*
-* The base path can be relative or absolute.
-*
-* The 2nd path can also be relative or absolute. If absolute, it is returned
-* as-is. If it is a relative path, it is combined to the base path.
-*
-* Uses '/' as separator (to be compatible with stream-wrapper URIs).
-*
-* @param string $base The base path
-* @param string|null $path The path to combine
-* @param bool $separ true: add trailing sep, false: remove it
-* @return string The resulting path
-*/
-
-private static function combine_path($base,$path,$separ=false)
-{
-if (($base=='.') || ($base=='') || self::is_absolute_path($path))
-	$res=$path;
-elseif (($path=='.') || is_null($path))
-	$res=$base;
-else	//-- Relative path : combine it to base
-	$res=rtrim($base,'/\\').'/'.$path;
-
-return self::trailing_separ($res,$separ);
-}
-
-//----- Taken from PHO_File
-/**
-* Adds or removes a trailing separator in a path
-*
-* @param string $path Input
-* @param bool $flag true: add trailing sep, false: remove it
-* @return bool The result path
-*/
-
-private static function trailing_separ($path, $separ)
-{
-$path=rtrim($path,'/\\');
-if ($path=='') return '/';
-if ($separ) $path=$path.'/';
-return $path;
-}
-
-//----- Taken from PHO_File
-/**
-* Determines if a given path is absolute or relative
-*
-* @param string $path The path to check
-* @return bool True if the path is absolute, false if relative
-*/
-
-private static function is_absolute_path($path)
-{
-return ((strpos($path,':')!==false)
-	||(strpos($path,'/')===0)
-	||(strpos($path,'\\')===0));
-}
-
-//----- Taken from PHO_File
-/**
-* Build an absolute path from a given (absolute or relative) path
-*
-* If the input path is relative, it is combined with the current working
-* directory.
-*
-* @param string $path The path to make absolute
-* @param bool $separ True if the resulting path must contain a trailing separator
-* @return string The resulting absolute path
-*/
-
-private static function mk_absolute_path($path,$separ=false)
-{
-if (!self::is_absolute_path($path)) $path=self::combine_path(getcwd(),$path);
-return self::trailing_separ($path,$separ);
-}
-
-} // End of class Automap_Loaded_Map
-
 //===========================================================================
 /**
 * This class autoloads PHP scripts and extensions from an extension,
@@ -233,6 +43,8 @@ return self::trailing_separ($path,$separ);
 */
 //===========================================================================
 
+if (!class_exists('Automap',false)) 
+{
 class Automap
 {
 /** Runtime API version */
@@ -300,7 +112,7 @@ private static $support_constant_autoload; //
 
 private static $support_function_autoload; // 
 
-/** @var array(<map ID> => <Automap_Loaded_Map>) Array of active maps */
+/** @var array(<map ID> => <Automap_Map>) Array of active maps */
 
 private static $maps=array();
 
@@ -497,46 +309,7 @@ public static function map($id)
 {
 self::validate($id);
 
-return self::$maps[$id]->map();
-}
-
-//-----
-/**
-* Returns the Automap_Loaded_Map object corresponding to an active map ID
-*
-* Reserved for internal use. This method is not implemented in the PECL code.
-*
-* @param string $id The map ID
-* @return Automap_Loaded_Map instance
-* @throws Exception if map ID is invalid
-*/
-
-public static function lmap($id)
-{
-self::validate($id);
-
 return self::$maps[$id];
-}
-
-//-----
-/**
-* Returns the absolute base path corresponding to an active ID
-*
-* Needed because Automap_Loaded_Map objects exist in PHP only. So, they cannot
-* be accessed when PECL extension is active.
-*
-* Reserved for internal use.
-*
-* @param string $id The map ID
-* @return The absolute base path for this ID
-* @throws Exception if map ID is invalid
-*/
-
-public static function base_path($id)
-{
-self::validate($id);
-
-return self::$maps[$id]->base_path();
 }
 
 //-----
@@ -567,14 +340,14 @@ $id=self::$load_index++;
 
 try
 {
-$lmap=new Automap_Loaded_Map($path,$id,$flags,$_bp);
+$map=new Automap_Map($path,$flags,$_bp);
 }
 catch (Exception $e)
 	{
 	throw new Exception($path.': Cannot load - '.$e->getMessage());
 	}
 
-self::$maps[$id]=$lmap;
+self::$maps[$id]=$map;
 // PHO_Display::info("Loaded $path as ID $id");//TRACE
 return $id;
 }
@@ -628,9 +401,16 @@ switch($type)
 }
 
 //---------
-// The autoload handler, the default type is 'class', hoping that future
-// versions of PHP support function and constant autoloading.
-// Reserved for internal use
+/**
+* The autoload handler
+*
+* Reserved for internal use
+*
+* @param string $name Symbol name
+* @param string Symbol type. One of Automap::T_xxx. The default type is 'class',
+*   and cannot be anything else as long as PHP does not support function/constant
+*   autoload.
+*/
 
 public static function autoload_hook($name,$type=self::T_CLASS)
 {
@@ -638,20 +418,33 @@ self::resolve($type,$name,true,false);
 }
 
 //---------
-// resolve a symbol, i.e. load what needs to be loaded for the symbol to be
-// defined. Returns true on success / false if unable to resolve symbol.
+/**
+* Resolve a symbol
+*
+* , i.e. load what needs to be loaded for the symbol to be
+* defined.
+*
+* In order to optimize the PHK case, maps are searched in reverse order
+* (newest first).
+*
+* @param string $type Symbol type
+* @param string $name Symbol name
+* @param bool $autoloading Whether this was called by the PHP autoloader
+* @param bool $exception Whether we must throw an exception if the resolution fails
+* @return true on success / false if unable to resolve symbol
+* @throw Exception
+*/
 
 private static function resolve($type,$name,$autoloading=false
 	,$exception=false)
 {
-//echo "resolve(".self::type_to_string($type).",$name)\n";//TRACE
+// PHO_Display::info("resolve(".self::type_to_string($type).",$name)");//TRACE
 
 if ((!$autoloading)&&(self::symbol_is_defined($type,$name))) return true;
 
 foreach(array_reverse(self::$maps,true) as $id => $map)
 	{
-	if (($res=$map->resolve($type,$name,$id))===false) continue;
-	list($id,$entry)=$res;
+	if (($entry=$map->resolve($type,$name,$id))===false) continue;
 	// PHO_Display::info("Symbol $name was resolved from ID $id");
 	self::call_success_handlers($entry,$id);
 	return true;
@@ -666,6 +459,7 @@ return false;
 }
 
 //---------
+// Methods for explicit resolutions
 
 public static function get_function($name)
 	{ return self::resolve(self::T_FUNCTION,$name,false,false); }

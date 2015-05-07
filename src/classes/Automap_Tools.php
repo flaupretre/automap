@@ -46,8 +46,8 @@ public static function check($id)
 {
 $checked_targets=array();
 
-$base_path=Automap::base_path($id);
 $map=Automap::map($id);
+$base_path=$map->base_path();
 
 $c=0;
 foreach($map->symbols() as $s)

@@ -17,7 +17,7 @@
 //
 //=============================================================================
 /**
-* The map instance
+* A map instance
 *
 * When the PECL extension is not present, this class is instantiated when the
 * map is loaded, and it is used by the autoloader.
@@ -27,8 +27,6 @@
 *
 * This file is included in the PHK PHP runtime.
 *
-* The whole file is <slow path>
-* 
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
@@ -51,7 +49,7 @@ if (!class_exists('Automap_Map',false))
 {
 class Automap_Map
 {
-/** The path of the map file (as given at creation time) */
+/** The absolute path of the map file */
 
 private $path;			
 
@@ -62,27 +60,38 @@ private $path;
 
 private $symbols=null;
 
-/** @var array()	The map options */
+/** @var array(<name> => <value>)	The map options */
 
-private $options=null;	// array()
+private $options=null;
 
 /** @var string The version of Automap_Creator that created the map file */
 
 private $version;
 
-/** The minimum runtime version needed to understand the map file */
+/** @var string The minimum runtime version needed to understand the map file */
 
 private $min_version;
 
-/** Load flags */
+/** @var integer Load flags */
 
 private $flags;
 
-//-----
+/** @var string Absolute base path */
 
-public function __construct($path,$flags=0)
+private $base_path;
+
+//-----
+/**
+* Construct a map object from an existing map file (real or virtual)
+*
+* @param string $path Path of the map file to read
+* @param integer $flags Combination of Automap load flags (@see Automap)
+* @param string Reserved for internal use (PHK). Never set this.
+*/
+
+public function __construct($path,$flags=0,$_bp=null)
 {
-$this->path=$path;
+$this->path=self::mk_absolute_path($path);
 $this->flags=$flags;
 
 try
@@ -141,6 +150,12 @@ if (!array_key_exists('map',$buf)) throw new Exception('No symbol table');
 if (!is_array($bsymbols=$buf['map']))
 	throw new Exception('Symbol table should contain an array');
 
+//-- Compute base path
+
+if (!is_null($_bp)) $this->base_path=$_bp;
+else $this->base_path=self::combine_path(dirname($this->path)
+	,$this->option('base_path'),true);
+
 //-- Process symbols
 
 $this->symbols=array();
@@ -181,6 +196,7 @@ public function flags() { return $this->flags; }
 public function options() { return $this->options; }
 public function version() { return $this->version; }
 public function min_version() { return $this->min_version; }
+public function base_path() { return $this->base_path; }
 
 //---
 
@@ -197,6 +213,7 @@ return count($this->symbols);
 }
 
 //---
+// We need to use combine_path() because the registered path (rpath) can be absolute
 
 private function export_entry($entry)
 {
@@ -205,6 +222,7 @@ return array(
 	'symbol' 	=> $entry['n'],
 	'ptype'		=> $entry['t'],
 	'rpath'		=> $entry['p'],
+	'path'		=> self::combine_path($this->base_path,$entry['p'])
 	);
 }
 
@@ -215,6 +233,58 @@ public function get_symbol($type,$symbol)
 $key=Automap::key($type,$symbol);
 if (!isset($this->symbols[$key])) return false;
 return $this->export_entry($this->symbols[$key]);
+}
+
+//-------
+/**
+* Try to resolve a symbol using this map
+*
+* For performance reasons, we trust the map and don't check if the symbol is
+* defined after loading the script/extension/package.
+*
+* @param string $type One of the Automap::T_xxx symbol types
+* @param string Symbol name including namespace (no leading '\')
+* @param integer $id Used to return the ID of the map where the symbol was found
+* @return exported entry if found, false if not found
+*/
+
+public function resolve($type,$name,&$id)
+{
+if (($this->flags & Automap::NO_AUTOLOAD)
+		|| (($entry=$this->get_symbol($type,$name))===false)) return false;
+
+//-- Found
+
+$path=$entry['path']; // Absolute path
+switch($entry['ptype'])
+	{
+	case Automap::F_EXTENSION:
+		if (!dl($path)) return false;
+		break;
+
+	case Automap::F_SCRIPT:
+		//PHO_Display::debug("Loading script file : $path");//TRACE
+		{ require($path); }
+		break;
+
+	case Automap::F_PACKAGE:
+		// Remove E_NOTICE messages if the test script is a package - workaround
+		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
+		// In case of embedded packages and maps, the returned ID corresponds to
+		// the map where the symbol was finally found.
+	
+		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
+		$mnt=require($path);
+		error_reporting($errlevel);
+		$pkg=PHK_Mgr::instance($mnt);
+		$id=$pkg->automap_id();
+		return Automap::map($id)->resolve($type,$name,$id);
+		break;
+
+	default:
+		throw new Exception('<'.$entry['ptype'].'>: Unknown target type');
+	}
+return $entry;
 }
 
 //---
@@ -234,6 +304,89 @@ return $ret;
 public function show($format=null,$subfile_to_url_function=null)
 {
 return Automap_Display::show($this,$format,$subfile_to_url_function);
+}
+
+//============ Utilities (taken from external libs) ============
+// We need to duplicate these methods here because this class is included in the
+// PHK PHP runtime, which does not include the PHO_xxx classes.
+
+//----- Taken from PHO_File
+/**
+* Combines a base path with another path
+*
+* The base path can be relative or absolute.
+*
+* The 2nd path can also be relative or absolute. If absolute, it is returned
+* as-is. If it is a relative path, it is combined to the base path.
+*
+* Uses '/' as separator (to be compatible with stream-wrapper URIs).
+*
+* @param string $base The base path
+* @param string|null $path The path to combine
+* @param bool $separ true: add trailing sep, false: remove it
+* @return string The resulting path
+*/
+
+private static function combine_path($base,$path,$separ=false)
+{
+if (($base=='.') || ($base=='') || self::is_absolute_path($path))
+	$res=$path;
+elseif (($path=='.') || is_null($path))
+	$res=$base;
+else	//-- Relative path : combine it to base
+	$res=rtrim($base,'/\\').'/'.$path;
+
+return self::trailing_separ($res,$separ);
+}
+
+//----- Taken from PHO_File
+/**
+* Adds or removes a trailing separator in a path
+*
+* @param string $path Input
+* @param bool $flag true: add trailing sep, false: remove it
+* @return bool The result path
+*/
+
+private static function trailing_separ($path, $separ)
+{
+$path=rtrim($path,'/\\');
+if ($path=='') return '/';
+if ($separ) $path=$path.'/';
+return $path;
+}
+
+//----- Taken from PHO_File
+/**
+* Determines if a given path is absolute or relative
+*
+* @param string $path The path to check
+* @return bool True if the path is absolute, false if relative
+*/
+
+private static function is_absolute_path($path)
+{
+return ((strpos($path,':')!==false)
+	||(strpos($path,'/')===0)
+	||(strpos($path,'\\')===0));
+}
+
+//----- Taken from PHO_File
+/**
+* Build an absolute path from a given (absolute or relative) path
+*
+* If the input path is relative, it is combined with the current working
+* directory.
+*
+* @param string $path The path to make absolute
+* @param bool $separ True if the resulting path must contain a trailing separator
+* @return string The resulting absolute path
+*/
+
+private static function mk_absolute_path($path,$separ=false)
+{
+if (!self::is_absolute_path($path)) $path=self::combine_path(getcwd(),$path);
+return self::trailing_separ($path,$separ);
 }
 
 //---
