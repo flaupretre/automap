@@ -139,6 +139,8 @@ foreach(array_keys($this->symbols) as $key)
 }
 
 //---------
+// Using adler32 as it is supposed to be the fastest algo. That's more than
+// enough for a CRC check.
 
 public function serialize()
 {
@@ -152,7 +154,8 @@ $data=serialize(array('map' => $bmap, 'options' => $this->options));
 $buf=Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
 	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+61,8)
 	.'00000000'.$data;
-return substr_replace($buf,hash('crc32',$buf),53,8); // Insert CRC
+
+return substr_replace($buf,hash('adler32',$buf),53,8); // Insert CRC
 }
 
 //---------

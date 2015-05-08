@@ -134,7 +134,7 @@ if (!($flags & Automap::NO_CRC_CHECK))
 	{
 	$crc=substr($buf,53,8);
 	$buf=substr_replace($buf,'00000000',53,8);
-	if ($crc!==hash('crc32',$buf)) throw new Exception('CRC error');
+	if ($crc!==hash('adler32',$buf)) throw new Exception('CRC error');
 	}
 
 //-- Read data

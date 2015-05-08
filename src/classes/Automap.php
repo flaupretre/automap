@@ -336,17 +336,9 @@ return array_keys(self::$maps);
 
 public static function load($path,$flags=0,$_bp=null)
 {
-$id=self::$load_index++;
-
-try
-{
 $map=new Automap_Map($path,$flags,$_bp);
-}
-catch (Exception $e)
-	{
-	throw new Exception($path.': Cannot load - '.$e->getMessage());
-	}
 
+$id=self::$load_index++;
 self::$maps[$id]=$map;
 // PHO_Display::info("Loaded $path as ID $id");//TRACE
 return $id;
