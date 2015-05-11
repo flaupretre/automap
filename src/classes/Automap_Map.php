@@ -53,16 +53,21 @@ class Automap_Map
 
 private $path;			
 
-/** @var array($key => array('T' => <symbol type>
-	,'n' => <case-sensitive symbol name>
-	,'t' => <target type>
-	,'p' => <target relative path>)		The symbol table */
+/** @var array(<key> => <target>)	The symbol table (filled from slots) */
 
-private $symbols=null;
+private $symbols;
+
+/** @var array(<ns> => <slot data>)	The symbols not loaded in the symbol table yet */
+
+private $slots;
+
+/** @var integer Symbol count of this map */
+
+private $symcount;
 
 /** @var array(<name> => <value>)	The map options */
 
-private $options=null;
+private $options;
 
 /** @var string The version of Automap_Creator that created the map file */
 
@@ -101,7 +106,7 @@ try
 if (($buf=@file_get_contents($this->path))===false)
 	throw new Exception('Cannot read map file');
 $bufsize=strlen($buf);
-if ($bufsize<62) throw new Exception("Short file (size=$bufsize)");
+if ($bufsize<70) throw new Exception("Short file (size=$bufsize)");
 
 //-- Check magic
 
@@ -109,14 +114,14 @@ if (substr($buf,0,14)!=Automap::MAGIC) throw new Exception('Bad Magic');
 
 //-- Check min runtime version required by map
 
-$this->min_version=trim(substr($buf,16,12));	
+$this->min_version=trim(substr($buf,14,12));	
 if (version_compare($this->min_version,Automap::VERSION) > 0)
 	throw new Exception($this->path.': Cannot understand this map.'.
 		' Requires at least Automap version '.$this->min_version);
 
 //-- Check if the map format is not too old
 
-$this->version=trim(substr($buf,30,12));
+$this->version=trim(substr($buf,26,12));
 if (strlen($this->version)==0)
 	throw new Exception('Invalid empty map version');
 if (version_compare($this->version,Automap::MIN_MAP_VERSION) < 0)
@@ -125,21 +130,26 @@ $map_major_version=$this->version{0};
 
 //-- Check file size
 
-if (strlen($buf)!=($sz=(int)substr($buf,45,8)))
-	throw new Exception('Invalid file size. Should be '.$sz);
+if (strlen($buf)!=($sz=(int)substr($buf,38,8)))
+	throw new Exception('Invalid file size. '.$sz.' should be '.strlen($buf));
 
 //-- Check CRC
 
 if (!($flags & Automap::CRC_CHECK))
 	{
-	$crc=substr($buf,53,8);
-	$buf=substr_replace($buf,'00000000',53,8);
+	$crc=substr($buf,46,8);
+	$buf=substr_replace($buf,'00000000',46,8);
 	if ($crc!==hash('adler32',$buf)) throw new Exception('CRC error');
 	}
 
+//-- Symbol count
+
+$this->symcount=(int)substr($buf,54,8);
+
 //-- Read data
-	
-if (($buf=unserialize(substr($buf,61)))===false)
+
+$dsize=(int)substr($buf,62,8);
+if (($buf=unserialize(substr($buf,70,$dsize)))===false)
 	throw new Exception('Cannot unserialize data from map file');
 if (!is_array($buf))
 	throw new Exception('Map file should contain an array');
@@ -147,8 +157,9 @@ if (!array_key_exists('options',$buf)) throw new Exception('No options array');
 if (!is_array($this->options=$buf['options']))
 	throw new Exception('Options should be an array');
 if (!array_key_exists('map',$buf)) throw new Exception('No symbol table');
-if (!is_array($bsymbols=$buf['map']))
-	throw new Exception('Symbol table should contain an array');
+if (!is_array($this->slots=$buf['map']))
+	throw new Exception('Slot table should contain an array');
+$this->symbols=array();
 
 //-- Compute base path
 
@@ -156,36 +167,46 @@ if (!is_null($_bp)) $this->base_path=$_bp;
 else $this->base_path=self::combine_path(dirname($this->path)
 	,$this->option('base_path'),true);
 
-//-- Process symbols
-
-$this->symbols=array();
-foreach($bsymbols as $bval)
-	{
-	$a=array();
-	switch($map_major_version)
-		{
-		case '3':
-			if (strlen($bval)<5) throw new Exception("Invalid value string: <$bval>");
-			$a['T']=$bval{0};
-			$a['t']=$bval{1};
-			$ta=explode('|',substr($bval,2));
-			if (count($ta)<2) throw new Exception("Invalid value string: <$bval>");
-			$a['n']=$ta[0];
-			$a['p']=$ta[1];
-			break;
-
-		default:
-			throw new Exception("Cannot understand this map version ($map_major_version)");
-		}
-	$key=Automap::key($a['T'],$a['n']);
-	$this->symbols[$key]=$a;
-	}
 }
 catch (Exception $e)
 	{
 	$this->symbols=array(); // No retry later
 	throw new Exception($path.': Cannot load map - '.$e->getMessage());
 	}
+}
+
+//---------
+/**
+* Load a slot into the symbol table
+*
+* @param string $ns Normalized namespace. Must correspond to an existing slot (no check)
+* @return null
+*/
+
+private function load_slot($ns)
+{
+$this->symbols=array_merge($this->symbols,unserialize($this->slots[$ns]));
+unset($this->slots[$ns]);
+}
+
+//---------
+/**
+* Extracts the namespace from a symbol name
+*
+* The returned value has no leading/trailing separator.
+*
+* Do not use: access reserved for Automap classes
+*
+* @param string $name The symbol value (case sensitive)
+* @return string Namespace. If no namespace, returns an empty string.
+*/
+
+public static function ns_key($name)
+{
+$name=trim($name,'\\');
+$pos=strrpos($name,'\\');
+if ($pos!==false) return substr($name,0,$pos);
+else return '';
 }
 
 //---
@@ -209,19 +230,22 @@ return (isset($this->options[$opt]) ? $this->options[$opt] : null);
 
 public function symbol_count()
 {
-return count($this->symbols);
+return $this->symcount;
 }
 
 //---
+// The entry we are exporting must be in the symbol table (no check)
 // We need to use combine_path() because the registered path (rpath) can be absolute
 
-private function export_entry($entry)
+private function export_entry($key)
 {
+$entry=$this->symbols[$key];
+
 $a=array(
-	'stype'		=> $entry['T'],
-	'symbol' 	=> $entry['n'],
-	'ptype'		=> $entry['t'],
-	'rpath'		=> $entry['p']
+	'stype'		=> $key{0},
+	'symbol' 	=> substr($key,1),
+	'ptype'		=> $entry{0},
+	'rpath'		=> substr($entry,1)
 	);
 
 $a['path']=(($a['ptype']===Automap::F_EXTENSION) ? $a['rpath']
@@ -235,8 +259,16 @@ return $a;
 public function get_symbol($type,$symbol)
 {
 $key=Automap::key($type,$symbol);
-if (!isset($this->symbols[$key])) return false;
-return $this->export_entry($this->symbols[$key]);
+if (!($found=array_key_exists($key,$this->symbols)))
+	{
+	if (count($this->slots))
+		{
+		$ns=self::ns_key($symbol);
+		if (array_key_exists($ns,$this->slots)) $this->load_slot($ns);
+		$found=array_key_exists($key,$this->symbols);
+		}
+	}
+return ($found ? $this->export_entry($key) : false);
 }
 
 //-------
@@ -292,12 +324,17 @@ return $entry;
 }
 
 //---
-// Return an array without keys (key format is private and may change)
 
 public function symbols()
 {
+/* First, load every remaining slot */
+
+foreach(array_keys($this->slots) as $ns) $this->load_slot($ns);
+
+/* Then, convert every entry to the export format */
+
 $ret=array();
-foreach($this->symbols as $entry) $ret[]=$this->export_entry($entry);
+foreach(array_keys($this->symbols) as $key) $ret[]=$this->export_entry($key);
 
 return $ret;
 }
@@ -319,7 +356,7 @@ return Automap_Display::show($this,$format,$subfile_to_url_function);
 * The first time a given map file is loaded, it is read by Automap_Map and
 * transmitted to the extension. On subsequent requests, it is retrieved from
 * persistent memory. This allows to code complex features in PHP and maintain
-* the code in a single location.
+* the code in a single location without loosing in performance.
 *
 * @param string $version The version of data to transmit (reserved for future use)
 * @return array

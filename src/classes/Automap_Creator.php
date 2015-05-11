@@ -141,21 +141,43 @@ foreach(array_keys($this->symbols) as $key)
 //---------
 // Using adler32 as it is supposed to be the fastest algo. That's more than
 // enough for a CRC check.
+// Symbols are supposed to be normalized (no leading/trailing '\').
 
 public function serialize()
 {
-$bmap=array();
+//-- Store symbols in namespace slots
+
+$slots=array();
 foreach($this->symbols as $key => $va)
 	{
-	$bmap[]=$va['T'].$va['t'].$va['n'].'|'.$va['p'];
+	$key=$va['T'].$va['n'];
+	$target=$va['t'].$va['p'];
+	$ns=Automap_Map::ns_key($va['n']);
+	if (!array_key_exists($ns,$slots)) $slots[$ns]=array();
+	$slots[$ns][$key]=$target;
 	}
-$data=serialize(array('map' => $bmap, 'options' => $this->options));
 
-$buf=Automap::MAGIC.' M'.str_pad(self::MIN_VERSION,12).' V'
-	.str_pad(self::VERSION,12).' FS'.str_pad(strlen($data)+61,8)
-	.'00000000'.$data;
+//-- Serialize
 
-return substr_replace($buf,hash('adler32',$buf),53,8); // Insert CRC
+foreach(array_keys($slots) as $ns)
+	{
+	$slots[$ns]=serialize($slots[$ns]);
+	}
+
+$data=serialize(array('map' => $slots, 'options' => $this->options));
+
+//-- Dump to file
+
+$buf=Automap::MAGIC
+	.str_pad(self::MIN_VERSION,12)
+	.str_pad(self::VERSION,12)
+	.str_pad(strlen($data)+70,8)
+	.'00000000'
+	.str_pad(count($this->symbols),8)
+	.str_pad(strlen($data),8)
+	.$data;
+
+return substr_replace($buf,hash('adler32',$buf),46,8); // Insert CRC
 }
 
 //---------
