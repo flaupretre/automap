@@ -44,6 +44,8 @@ private $symbols=array();	// array($key => array('T' => <symbol type>
 							// , 't' => <target type>, 'p' => <target path>))
 private $options=array();
 
+private $php_file_ext=array('php','inc','hh');
+
 //---------
 
 public function option($opt)
@@ -67,6 +69,22 @@ public function unset_option($option)
 PHO_Display::trace("Unsetting option $option");
 
 if (isset($this->options[$option])) unset($this->options[$option]);
+}
+
+//---------
+/**
+* Set the list of file suffixes recognized as PHP source scripts
+*
+* Default list is 'php, 'inc, 'hh'.
+*
+* @param array|string If array, replace the list, otherwise add a suffix to the list
+* @return null
+*/
+
+public function set_php_file_ext($a)
+{
+if (is_array($a)) $this->php_file_ext=$a;
+else $this->php_file_ext[]=$a;
 }
 
 //---------
@@ -314,7 +332,9 @@ switch($type=filetype($fpath))
 		foreach(PHO_File::scandir($fpath) as $entry)
 			{
 			$epath=PHO_File::combine_path($fpath,$entry);
-			if (is_file($epath) && strpos(PHO_File::file_suffix($entry),'php')===false)
+			if (is_file($epath)
+				&& array_search(strtolower(PHO_File::file_suffix($entry))
+				,$this->php_file_ext)===false)
 				PHO_Display::trace("Ignoring file $epath (not a PHP script)");
 			else
 				$this->register_path($epath,PHO_File::combine_path($rpath,$entry));
