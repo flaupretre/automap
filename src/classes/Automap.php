@@ -217,8 +217,8 @@ foreach (self::$success_handlers as $callable)
 /**
 * Combines a type and a symbol in a 'key'
 *
-* Extension names, functions, classes, and namespaces are case insensitive.
-* Constants are case sensitive.
+* Starting with version 3.0, Automap is fully case-sensitive. This allows for
+* higher performance and cleaner code.
 *
 * Do not use: access reserved for Automap classes
 *
@@ -229,22 +229,7 @@ foreach (self::$success_handlers as $callable)
 
 public static function key($type,$name)
 {
-$name=trim($name,'\\');
-
-switch($type)
-	{
-	case self::T_EXTENSION:
-	case self::T_FUNCTION:
-	case self::T_CLASS:
-		$name=strtolower($name);
-		break;
-	default:
-		// lowercase namespace only
-		$pos=strrpos($name,'\\');
-		if ($pos!==false) $name=strtolower(substr($name,0,$pos)).'\\'.substr($name,$pos+1);
-	}
-
-return $type.$name;
+return $type.trim($name,'\\');
 }
 
 //---------
