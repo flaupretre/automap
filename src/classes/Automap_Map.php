@@ -130,7 +130,7 @@ if (strlen($buf)!=($sz=(int)substr($buf,45,8)))
 
 //-- Check CRC
 
-if (!($flags & Automap::NO_CRC_CHECK))
+if (!($flags & Automap::CRC_CHECK))
 	{
 	$crc=substr($buf,53,8);
 	$buf=substr_replace($buf,'00000000',53,8);

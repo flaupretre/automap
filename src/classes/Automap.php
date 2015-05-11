@@ -78,9 +78,13 @@ const F_PACKAGE='P';
 
 const NO_AUTOLOAD=1;
 
-/** Dont't check CRC */
+/** Check CRC */
 
-const NO_CRC_CHECK=2;
+const CRC_CHECK=2;
+
+/** Load is done by the PECL extension - Reserved for internal use */
+
+const PECL_LOAD=4;
 
 /** @var array Fixed value array containing a readable string for each
 *              symbol/target type
