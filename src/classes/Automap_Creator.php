@@ -92,6 +92,33 @@ else $this->php_file_ext[]=$a;
 private function add_entry($va)
 {
 $key=Automap::key($va['T'],$va['n']);
+
+// Filter namespace if filter specified
+
+if (isset($va['f']))
+	{
+	$ns_list=$va['f'];
+	if (is_string($ns_list)) $ns_list=array($ns_list);
+	$ns=Automap_Map::ns_key($va['n']);
+	$ok=false;
+	foreach($ns_list as $item)
+		{
+		$item=trim($item,'\\');
+		if ((($item=='')&&($ns==''))||($item!='')&&(strpos($ns.'\\',$item.'\\')===0))
+			{
+			$ok=true;
+			break;
+			}
+		}
+	if (!$ok)
+		{
+		PHO_Display::debug("$key rejected by namespace filter");
+		return;
+		}
+	}
+
+// Add symbol to map if no conflict
+
 PHO_Display::debug("Adding symbol (key=<$key>, name=".$va['n']
 	.", target=".$va['p'].' ('.$va['t'].')');
 
@@ -103,14 +130,14 @@ if (isset($this->symbols[$key]))
 		{
 		echo "** Warning: Symbol multiply defined: "
 			.Automap::type_to_string($va['T'])
-			.' '.$va['n']."\n	Previous location: "
+			.' '.$va['n']."\n	Previous location (kept): "
 			.Automap::type_to_string($entry['t'])
-			.' '.$entry['p']."\n	New location (replacing): "
+			.' '.$entry['p']."\n	New location (discarded): "
 			.Automap::type_to_string($va['t'])
 			.' '.$va['p']."\n";
 		}
 	}
-$this->symbols[$key]=$va;
+else $this->symbols[$key]=$va;
 }
 
 //---------
@@ -132,9 +159,11 @@ return count($this->symbols);
 //---------
 // Build an array containing only target information
 
-private static function mk_varray($ftype,$fpath)
+private static function mk_varray($ftype,$fpath,$ns_filter=null)
 {
-return array('t' => $ftype, 'p' => $fpath);
+$a=array('t' => $ftype, 'p' => $fpath);
+if (!is_null($ns_filter)) $a['f']=$ns_filter;
+return $a;
 }
 
 //---------
@@ -150,7 +179,7 @@ foreach(array_keys($this->symbols) as $key)
 	{
 	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
 		{
-		PHO_DIsplay::debug("Removing $key from symbol table");
+		PHO_Display::debug("Removing $key from symbol table");
 		unset($this->symbols[$key]);
 		}
 	}
@@ -292,13 +321,13 @@ return $path;
 
 //---------
 
-public function register_script($fpath,$rpath)
+public function register_script($fpath,$rpath,$ns_filter=null)
 {
 PHO_Display::trace("Registering script $fpath as $rpath");
 
 // Force relative path
 
-$va=self::mk_varray(Automap::F_SCRIPT,self::normalize_path($rpath));
+$va=self::mk_varray(Automap::F_SCRIPT,self::normalize_path($rpath),$ns_filter);
 $this->unregister_target($va);
 
 $parser=new Automap_Parser;
@@ -319,10 +348,23 @@ return (substr(file_get_contents($path),0,strlen(Automap::MAGIC))===Automap::MAG
 }
 
 //---------
-// Recursive scan retains only PHP source files (file suffix must contain 'php')
-// Only dirs and regular files are considered. Other types are ignored.
+/**
+* Recursively scan a path and records symbols
+*
+* Scan retains PHP source files and phk packages only (based on file suffix)
+*
+* Only dirs and regular files are considered. Other types are ignored.
+*
+* @param string $fpath Path to register
+* @param string $rpath Path to register to in map for $fpath
+* @param string|array|null $ns_filter
+*			List of authorized namespaces (empty string means no namespace)
+*			If null, no filtering.
+* @param string|null $file_pattern
+*			File path preg pattern (File paths not matching this pattern are ignored)
+*/
 
-public function register_path($fpath,$rpath)
+public function register_path($fpath,$rpath,$ns_filter=null,$file_pattern=null)
 {
 PHO_Display::trace("Registering path <$fpath> as <$rpath>");
 
@@ -331,23 +373,20 @@ switch($type=filetype($fpath))
 	case 'dir':
 		foreach(PHO_File::scandir($fpath) as $entry)
 			{
-			$epath=PHO_File::combine_path($fpath,$entry);
-			if (is_file($epath)
-				&& array_search(strtolower(PHO_File::file_suffix($entry))
-				,$this->php_file_ext)===false)
-				PHO_Display::trace("Ignoring file $epath (not a PHP script)");
-			else
-				$this->register_path($epath,PHO_File::combine_path($rpath,$entry));
+			$this->register_path($fpath.'/'.$entry,$rpath.'/'.$entry,$ns_filter);
 			}
 		break;
 
 	case 'file':
-		if (PHK::file_is_package($fpath)) $this->register_phk($fpath,$rpath);
-		else $this->register_script($fpath,$rpath);
+		if ((!is_null($file_pattern)) && (!preg_match($file_pattern, $fpath))) continue;
+		$suffix=strtolower(PHO_File::file_suffix($fpath));
+		if ($suffix=='phk')
+			$this->register_phk($fpath,$rpath);
+		elseif (array_search($suffix,$this->php_file_ext)!==false)
+			$this->register_script($fpath,$rpath,$ns_filter);
+		else
+			PHO_Display::trace("Ignoring file $fpath (not a PHP script)");
 		break;
-
-	default:
-		PHO_Display::trace("Ignoring file $fpath (type=$type)");
 	}
 }
 

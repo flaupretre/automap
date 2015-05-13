@@ -250,6 +250,8 @@ $skip_blocks=false;
 $regs=false;
 $line_nb=0;
 
+//TODO: Implement a faster mechanism using regexp. Testing line by line is too slow.
+
 try {
 foreach(explode("\n",$buf) as $line)
 	{
@@ -292,6 +294,9 @@ $block_level=0;
 $state=self::ST_OUT;
 $name='';
 $ns='';
+
+// Note: Using php_strip_whitespace() before token_get_all does not improve
+// performance.
 
 foreach(token_get_all($buf) as $token)
 	{
