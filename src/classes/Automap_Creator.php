@@ -167,6 +167,14 @@ return $a;
 }
 
 //---------
+
+public function add_symbol($stype,$sname,$ftype,$fpath)
+{
+$va=self::mk_varray($ftype,$fpath);
+$this->add_ts_entry($stype,$sname,$va);
+}
+
+//---------
 // Remove the entries matching a given target
 
 private function unregister_target($va)
