@@ -247,46 +247,40 @@ $buf=str_replace("\r",'',$buf);
 //	<double-slash> <Automap>:skip-blocks
 
 $skip_blocks=false;
-$regs=false;
-$line_nb=0;
 
-//TODO: Implement a faster mechanism using regexp. Testing line by line is too slow.
-
-try {
-foreach(explode("\n",$buf) as $line)
+$a=null;
+if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 	{
-	$line_nb++;
-	$line=trim($line);
-	$lin=str_replace('	',' ',$line);	// Replace tabs with spaces
-	if (!preg_match(self::AUTOMAP_COMMENT,$line,$regs)) continue;
-
-	if ($regs[1]=='no-auto-index') return;
-
-	if ($regs[1]=='skip-blocks')
+	foreach($a as $match)
 		{
-		$skip_blocks=true;
-		continue;
-		}
-	$type_string=strtolower(strtok($regs[2],' '));
-	$name=strtok(' ');
-	if ($type_string===false || $name===false) throw new Exception('Needs 2 args');
-	$type=Automap::string_to_type($type_string);
-	switch($regs[1])
-		{
-		case 'declare': // Add entry, even if set to be 'ignored'.
-			$this->add_symbol($type,$name,false);
-			break;
+		$cmd=$match[1];
+		if ($cmd=='no-auto-index') return;
 
-		case 'ignore': // Ignore this symbol in autoindex stage.
-			$this->exclude($type,$name);
-			break;
+		if ($cmd=='skip-blocks')
+			{
+			$skip_blocks=true;
+			continue;
+			}
+		$type_string=strtolower(strtok($match[2],' '));
+		$name=strtok(' ');
+		if ($type_string===false || $name===false)
+			throw new Exception($cmd.': Directive needs 2 args');
+		$type=Automap::string_to_type($type_string);
+		switch($cmd)
+			{
+			case 'declare': // Add entry, even if set to be 'ignored'.
+				$this->add_symbol($type,$name,false);
+				break;
 
-		default:
-			throw new Exception($regs[1].': Invalid Automap directive');
+			case 'ignore': // Ignore this symbol in autoindex stage.
+				$this->exclude($type,$name);
+				break;
+
+			default:
+				throw new Exception($cmd.': Invalid Automap directive');
+			}
 		}
 	}
-} catch (Exception $e)
-	{ throw new Exception("(line $line_nb): ".$e->getMessage()); }
 
 //-- Auto index
 
