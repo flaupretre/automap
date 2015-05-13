@@ -43,7 +43,7 @@ if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
 
 if (!class_exists('Automap_Parser',false)) 
 {
-class Automap_Parser
+class Automap_Parser implements Automap_Parser_Interface
 {
 //-- Parser states :
 
@@ -78,8 +78,19 @@ private $exclude_list;
 
 public function __construct()
 {
+$this->cleanup();
+}
+
+//---------------------------------
+
+private function cleanup()
+{
+$a=$this->symbols;
+
 $this->symbols=array();
 $this->exclude_list=array();
+
+return $a;
 }
 
 //---------------------------------
@@ -122,30 +133,6 @@ $this->symbols[]=array('type' => $type, 'name' => $name);
 
 //---------------------------------
 /**
-* Return the number of symbols detected so far
-*
-* @return integer symbol count
-*/
-
-public function symbol_count()
-{
-return count($this->symbols);
-}
-
-//---------------------------------
-/**
-* Return the symbol table
-*
-* @return array
-*/
-
-public function symbols()
-{
-return $this->symbols;
-}
-
-//---------------------------------
-/**
 * Extracts symbols from an extension
 *
 * @param string $file Extension name
@@ -155,6 +142,8 @@ return $this->symbols;
 
 public function parse_extension($file)
 {
+$this->cleanup();
+
 $extension_list=get_loaded_extensions();
 
 @dl($file);
@@ -186,6 +175,8 @@ if (method_exists($ext,'getTraits')) // Compatibility
 	foreach($ext->getTraits() as $trait)
 		$this->add_symbol(Automap::T_CLASS,$trait->getName());
 	}
+
+return $this->cleanup();
 }
 
 //---------------------------------
@@ -212,7 +203,7 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 * Extracts symbols from a PHP script file
 *
 * @param string $path FIle to parse
-* @return null
+* @return array of symbols
 * @throws Exception on parse error
 */
 
@@ -220,7 +211,7 @@ public function parse_script_file($path)
 {
 try
 	{
-	$this->parse_script(file_get_contents($path));
+	return ($this->parse_script(file_get_contents($path)));
 	}
 catch (Exception $e)
 	{ throw new Exception("$path: ".$e->getMessage()); }
@@ -231,12 +222,14 @@ catch (Exception $e)
 * Extracts symbols from a PHP script contained in a string
 *
 * @param string $buf The script to parse
-* @return null
+* @return array of symbols
 * @throws Exception on parse error
 */
 
 public function parse_script($buf)
 {
+$this->cleanup();
+
 $buf=str_replace("\r",'',$buf);
 
 // Register explicit declarations
@@ -254,7 +247,7 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 	foreach($a as $match)
 		{
 		$cmd=$match[1];
-		if ($cmd=='no-auto-index') return;
+		if ($cmd=='no-auto-index') return array();
 
 		if ($cmd=='skip-blocks')
 			{
@@ -447,6 +440,7 @@ foreach(token_get_all($buf) as $token)
 			break;
 		}
 	}
+return $this->cleanup();
 }
 
 //---------

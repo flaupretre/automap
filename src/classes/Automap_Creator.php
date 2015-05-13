@@ -46,6 +46,23 @@ private $options=array();
 
 private $php_file_ext=array('php','inc','hh');
 
+private $parser; // Must implement Automap_Parser_Interface
+
+//---------
+
+public function __construct($parser=null)
+{
+$this->set_parser($parser);
+}
+
+//---------
+
+public function set_parser($parser=null)
+{
+if (is_null($parser)) $parser=new Automap_Parser();
+$this->parser=$parser;
+}
+
 //---------
 
 public function option($opt)
@@ -205,7 +222,6 @@ public function serialize()
 $slots=array();
 foreach($this->symbols as $key => $va)
 	{
-	$key=$va['T'].$va['n'];
 	$target=$va['t'].$va['p'];
 	$ns=Automap_Map::ns_key($va['n']);
 	if (!array_key_exists($ns,$slots)) $slots[$ns]=array();
@@ -258,14 +274,10 @@ PHO_Display::trace("Registering extension : $file");
 $va=self::mk_varray(Automap::F_EXTENSION,$file);
 $this->unregister_target($va);
 
-$parser=new Automap_Parser;
-$parser->parse_extension($file);
-
-foreach($parser->symbols() as $sym)
+foreach($this->parser->parse_extension($file) as $sym)
 	{
 	$this->add_ts_entry($sym['type'],$sym['name'],$va);
 	}
-unset($parser);
 }
 
 //---------
@@ -338,14 +350,10 @@ PHO_Display::trace("Registering script $fpath as $rpath");
 $va=self::mk_varray(Automap::F_SCRIPT,self::normalize_path($rpath),$ns_filter);
 $this->unregister_target($va);
 
-$parser=new Automap_Parser;
-$parser->parse_script_file($fpath);
-
-foreach($parser->symbols() as $sym)
+foreach($this->parser->parse_script_file($fpath) as $sym)
 	{
 	$this->add_ts_entry($sym['type'],$sym['name'],$va);
 	}
-unset($parser);
 }
 
 //---------
