@@ -1,16 +1,16 @@
 <?php
 //------------------------------------------------------------------
 
-class c15
+class c16
 {
+// This directive must cause automap not to index the class name
+// <Automap>:no-auto-index
 
 public static function RUN()
 {
-return 'c15';
+return 'c16';
 }
 
 } // End of class
-
-// <Automap>:declare function exp_func1
 
 ?>

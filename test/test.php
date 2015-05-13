@@ -1,7 +1,7 @@
 <?php
 
 define('MAP1','auto1.map');
-define('MAP1_SYMCOUNT',8);
+define('MAP1_SYMCOUNT',9);
 
 define('MAP2','auto2.map');
 
@@ -120,6 +120,16 @@ foreach ($syms as $sym)
 	$t->check('symbols(): element contains <rpath> index',isset($sym['rpath']));
 	$t->check('symbols(): checking rpath',file_exists($sym['rpath']));
 	}
+
+$found_c16=false;
+$found_func1=false;
+foreach ($syms as $sym)
+	{
+	if (($sym['stype']===Automap::T_CLASS)&&($sym['symbol']=='c16')) $found_c16=true;
+	if (($sym['stype']===Automap::T_FUNCTION)&&($sym['symbol']=='exp_func1')) $found_func1=true;
+	}
+$t->check('Directive no-auto-index works',!$found_c16);
+$t->check('Directive declare works',$found_func1);
 
 $t->check('check() returns no error',Automap_Tools::check($id1)===0);
 
