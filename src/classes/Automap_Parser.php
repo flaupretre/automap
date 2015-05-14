@@ -67,7 +67,7 @@ const AUTOMAP_COMMENT=',// *<Automap>:(\S+)(.*)$,';
 
 private $symbols;
 
-/** @var array(type, case-sensitive name) A list of symbols to exclude */
+/** @var array(symbol keys) A list of symbols to exclude */
 
 private $exclude_list;
 
@@ -78,15 +78,27 @@ private $exclude_list;
 
 public function __construct()
 {
-$this->cleanup();
+$this->symbols=array();
+$this->exclude_list=array();
 }
 
 //---------------------------------
 
 private function cleanup()
 {
-$a=$this->symbols;
+// Filter out excluded symbols
+if (count($this->exclude_list))
+	{
+	foreach(array_keys($this->symbols) as $n)
+		{
+		$s=$this->symbols[$n];
+		$key=Automap::key($s['type'],$s['name']);
+		if (array_search($key,$this->exclude_list)!==false)
+			unset($this->symbols[$n]);
+		}
+	}
 
+$a=$this->symbols;
 $this->symbols=array();
 $this->exclude_list=array();
 
@@ -104,7 +116,7 @@ return $a;
 
 private function exclude($type,$name)
 {
-$this->exclude_list[]=array($type,$name);
+$this->exclude_list[]=Automap::key($type,$name);
 }
 
 //---------------------------------
@@ -115,19 +127,11 @@ $this->exclude_list[]=array($type,$name);
 *
 * @param string $type one of the Automap::T_xx constants
 * @param string $name The symbol name
-* @param boolean $use_excluded whether we should filter out excluded symbols
 * @return null
 */
 
-private function add_symbol($type,$name,$use_excluded=true)
+private function add_symbol($type,$name)
 {
-if ($use_excluded) foreach($this->exclude_list as $e)
-	{
-	if (($e[0]===$type)&&($e[1]===$symbol)) return;
-	}
-
-PHO_Display::debug("Adding symbol (type=<$type>, name=<$name>");
-
 $this->symbols[]=array('type' => $type, 'name' => $name);
 }
 
@@ -200,6 +204,57 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 
 //---------------------------------
 /**
+* Register explicit declarations
+*
+* Format:
+*	<double-slash> <Automap>:declare <type> <value>
+*	<double-slash> <Automap>:ignore <type> <value>
+*	<double-slash> <Automap>:no-auto-index
+*	<double-slash> <Automap>:skip-blocks
+*
+* @return bool false if indexing is disabled on this file
+*/
+
+private function parse_script_directives($buf,&$skip_blocks)
+{
+$a=null;
+if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
+	{
+	foreach($a as $match)
+		{
+		$cmd=$match[1];
+		if ($cmd=='no-auto-index') return false;
+
+		if ($cmd=='skip-blocks')
+			{
+			$skip_blocks=true;
+			continue;
+			}
+		$type_string=strtolower(strtok($match[2],' '));
+		$name=strtok(' ');
+		if ($type_string===false || $name===false)
+			throw new Exception($cmd.': Directive needs 2 args');
+		$type=Automap::string_to_type($type_string);
+		switch($cmd)
+			{
+			case 'declare': // Add entry
+				$this->add_symbol($type,$name);
+				break;
+
+			case 'ignore': // Ignore this symbol
+				$this->exclude($type,$name);
+				break;
+
+			default:
+				throw new Exception($cmd.': Invalid Automap directive');
+			}
+		}
+	}
+return true;
+}
+
+//---------------------------------
+/**
 * Extracts symbols from a PHP script file
 *
 * @param string $path FIle to parse
@@ -232,51 +287,31 @@ $this->cleanup();
 
 $buf=str_replace("\r",'',$buf);
 
-// Register explicit declarations
-//Format:
-//	<double-slash> <Automap>:declare <type> <value>
-//	<double-slash> <Automap>:ignore <type> <value>
-//	<double-slash> <Automap>:no-auto-index
-//	<double-slash> <Automap>:skip-blocks
-
 $skip_blocks=false;
 
-$a=null;
-if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
+if (!$this->parse_script_directives($buf,$skip_blocks)) return array();
+
+if (function_exists('_automap_parse_tokens')) // If PECL function is available
 	{
-	foreach($a as $match)
-		{
-		$cmd=$match[1];
-		if ($cmd=='no-auto-index') return array();
-
-		if ($cmd=='skip-blocks')
-			{
-			$skip_blocks=true;
-			continue;
-			}
-		$type_string=strtolower(strtok($match[2],' '));
-		$name=strtok(' ');
-		if ($type_string===false || $name===false)
-			throw new Exception($cmd.': Directive needs 2 args');
-		$type=Automap::string_to_type($type_string);
-		switch($cmd)
-			{
-			case 'declare': // Add entry, even if set to be 'ignored'.
-				$this->add_symbol($type,$name,false);
-				break;
-
-			case 'ignore': // Ignore this symbol in autoindex stage.
-				$this->exclude($type,$name);
-				break;
-
-			default:
-				throw new Exception($cmd.': Invalid Automap directive');
-			}
-		}
+	$a=_automap_parse_tokens($buf,$skip_blocks);
+	//var_dump($a);//TRACE
+	foreach($a as $k) $this->add_symbol($k{0},substr($k,1));
+	}
+else
+	{
+	$this->parse_script_tokens($buf,$skip_blocks);
 	}
 
-//-- Auto index
+return $this->cleanup();
+}
 
+//---------------------------------
+/**
+* Extract symbols from script tokens
+*/
+
+private function parse_script_tokens($buf,$skip_blocks)
+{
 $block_level=0;
 $state=self::ST_OUT;
 $name='';
@@ -440,7 +475,6 @@ foreach(token_get_all($buf) as $token)
 			break;
 		}
 	}
-return $this->cleanup();
 }
 
 //---------
