@@ -13,4 +13,15 @@ return 'c15';
 
 // <Automap>:declare function exp_func1
 
+class c_excl
+{
+
+public static function RUN()
+{
+return 'c_excl';
+}
+
+} // End of class
+
+// <Automap>:ignore class c_excl
 ?>
