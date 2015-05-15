@@ -394,7 +394,7 @@ switch($type=filetype($fpath))
 		break;
 
 	case 'file':
-		if ((!is_null($file_pattern)) && (!preg_match($file_pattern, $fpath))) continue;
+		if ((!is_null($file_pattern)) && (!preg_match($file_pattern, $fpath))) return;
 		$suffix=strtolower(PHO_File::file_suffix($fpath));
 		if ($suffix=='phk')
 			$this->register_phk($fpath,$rpath);
