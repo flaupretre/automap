@@ -341,7 +341,7 @@ return $path;
 
 //---------
 
-public function register_script($fpath,$rpath,$ns_filter=null)
+public function register_script_file($fpath,$rpath,$ns_filter=null)
 {
 PHO_Display::trace("Registering script $fpath as $rpath");
 
@@ -399,7 +399,7 @@ switch($type=filetype($fpath))
 		if ($suffix=='phk')
 			$this->register_phk($fpath,$rpath);
 		elseif (array_search($suffix,$this->php_file_ext)!==false)
-			$this->register_script($fpath,$rpath,$ns_filter);
+			$this->register_script_file($fpath,$rpath,$ns_filter);
 		else
 			PHO_Display::trace("Ignoring file $fpath (not a PHP script)");
 		break;
