@@ -146,8 +146,6 @@ $this->symbols[]=array('type' => $type, 'name' => $name);
 
 public function parse_extension($file)
 {
-$this->cleanup();
-
 $extension_list=get_loaded_extensions();
 
 @dl($file);
@@ -266,7 +264,13 @@ public function parse_script_file($path)
 {
 try
 	{
-	return ($this->parse_script(file_get_contents($path)));
+	// Don't run PECL accelerated read for virtual files
+	$buf=((function_exists('_automap_file_get_contents')
+		&& (strpos($path,'://')===false)) ? 
+		_automap_file_get_contents($path)
+		: file_get_contents($path));
+	$ret=$this->parse_script($buf);
+	return $ret;
 	}
 catch (Exception $e)
 	{ throw new Exception("$path: ".$e->getMessage()); }
@@ -283,8 +287,6 @@ catch (Exception $e)
 
 public function parse_script($buf)
 {
-$this->cleanup();
-
 $buf=str_replace("\r",'',$buf);
 
 $skip_blocks=false;
