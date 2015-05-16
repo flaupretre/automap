@@ -409,6 +409,9 @@ self::resolve($type,$name,true,false);
 * In order to optimize the PHK case, maps are searched in reverse order
 * (newest first).
 *
+* Warning: Autoload mechanism is not reentrant. This function cannot reference
+* an unknow class (like PHO_Display).
+*
 * @param string $type Symbol type
 * @param string $name Symbol name
 * @param bool $autoloading Whether this was called by the PHP autoloader
@@ -420,14 +423,14 @@ self::resolve($type,$name,true,false);
 private static function resolve($type,$name,$autoloading=false
 	,$exception=false)
 {
-// PHO_Display::info("resolve(".self::type_to_string($type).",$name)");//TRACE
+//echo "Resolving $type$name\n";//TRACE
 
 if ((!$autoloading)&&(self::symbol_is_defined($type,$name))) return true;
 
 foreach(array_reverse(self::$maps,true) as $id => $map)
 	{
 	if (($entry=$map->resolve($type,$name,$id))===false) continue;
-	// PHO_Display::info("Symbol $name was resolved from ID $id");
+	//echo "Symbol $name was resolved from ID $id\n";
 	self::call_success_handlers($entry,$id);
 	return true;
 	}
@@ -473,16 +476,14 @@ public static function require_extension($name)
 } // End of class Automap
 //===========================================================================
 
-// Registers the automap callback (needs SPL). We support only the SPL
-// registration process because defining an _autoload() function is too
-// intrusive.
+// Registers the automap callback (prepend)
 
 if (!defined('_AUTOMAP_DISABLE_REGISTER'))
 	{
 	if (!extension_loaded('spl'))
 		throw new Exception("Automap requires the SPL extension");
 
-	spl_autoload_register('Automap::autoload_hook');
+	spl_autoload_register('Automap::autoload_hook',true,true);
 	}
 
 Automap::init();
