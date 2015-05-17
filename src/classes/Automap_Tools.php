@@ -54,7 +54,7 @@ foreach($map->symbols() as $s)
 	{
 	try
 		{
-		$path=PHO_File::combine_path($base_path,$s['rpath']);
+		$path=\Phool\File::combine_path($base_path,$s['rpath']);
 		$ptype=$s['ptype'];
 		$key=$ptype.$path;
 		if (isset($checked_targets[$key])) continue;
@@ -66,14 +66,14 @@ foreach($map->symbols() as $s)
 				break;
 
 			case Automap::F_SCRIPT:
-				PHO_Display::trace('Checking script at '.$s['rpath']);
+				\Phool\Display::trace('Checking script at '.$s['rpath']);
 				if (!is_file($path)) throw new Exception($path.': File not found');
 				if (PHK::file_is_package($path))
 					throw new Exception($path.': File is a PHK package (should be a script)');
 				break;
 
 			case Automap::F_PACKAGE:
-				PHO_Display::trace('Checking package at '.$s['rpath']);
+				\Phool\Display::trace('Checking package at '.$s['rpath']);
 				if (!is_file($path)) throw new Exception($path.': File not found');
 				if (!PHK::file_is_package($path))
 					throw new Exception($path.': File is not a PHK package');

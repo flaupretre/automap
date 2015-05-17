@@ -4,7 +4,7 @@
 class c16
 {
 // This directive must cause automap not to index the class name
-// <Automap>:no-auto-index
+// <Automap>:ignore-file
 
 public static function RUN()
 {

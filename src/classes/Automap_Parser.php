@@ -207,7 +207,7 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 * Format:
 *	<double-slash> <Automap>:declare <type> <value>
 *	<double-slash> <Automap>:ignore <type> <value>
-*	<double-slash> <Automap>:no-auto-index
+*	<double-slash> <Automap>:ignore-file
 *	<double-slash> <Automap>:skip-blocks
 *
 * @return bool false if indexing is disabled on this file
@@ -220,27 +220,26 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 	{
 	foreach($a as $match)
 		{
-		$cmd=$match[1];
-		if ($cmd=='no-auto-index') return false;
+		switch ($cmd=$match[1])
+			{
+			case 'ignore-file':
+				return false;
 
-		if ($cmd=='skip-blocks')
-			{
-			$skip_blocks=true;
-			continue;
-			}
-		$type_string=strtolower(strtok($match[2],' '));
-		$name=strtok(' ');
-		if ($type_string===false || $name===false)
-			throw new Exception($cmd.': Directive needs 2 args');
-		$type=Automap::string_to_type($type_string);
-		switch($cmd)
-			{
-			case 'declare': // Add entry
-				$this->add_symbol($type,$name);
+			case 'skip-blocks':
+				$skip_blocks=true;
 				break;
 
-			case 'ignore': // Ignore this symbol
-				$this->exclude($type,$name);
+			case 'declare':
+			case 'ignore':
+				$type_string=strtolower(strtok($match[2],' '));
+				$name=strtok(' ');
+				if ($type_string===false || $name===false)
+					throw new Exception($cmd.': Directive needs 2 args');
+				$type=Automap::string_to_type($type_string);
+				if ($cmd=='declare')
+					$this->add_symbol($type,$name);
+				else
+					$this->exclude($type,$name);
 				break;
 
 			default:
@@ -265,9 +264,9 @@ public function parse_script_file($path)
 try
 	{
 	// Don't run PECL accelerated read for virtual files
-	$buf=((function_exists('_automap_file_get_contents')
+	$buf=((function_exists('\\Automap\\Ext\\file_get_contents')
 		&& (strpos($path,'://')===false)) ? 
-		_automap_file_get_contents($path)
+		\Automap\Ext\file_get_contents($path)
 		: file_get_contents($path));
 	$ret=$this->parse_script($buf);
 	return $ret;
@@ -293,9 +292,9 @@ $skip_blocks=false;
 
 if (!$this->parse_script_directives($buf,$skip_blocks)) return array();
 
-if (function_exists('_automap_parse_tokens')) // If PECL function is available
-	{
-	$a=_automap_parse_tokens($buf,$skip_blocks);
+if (function_exists('\\Automap\\Ext\\parse_tokens')) 
+	{ // If PECL function is available
+	$a=\Automap\Ext\parse_tokens($buf,$skip_blocks);
 	//var_dump($a);//TRACE
 	foreach($a as $k) $this->add_symbol($k{0},substr($k,1));
 	}

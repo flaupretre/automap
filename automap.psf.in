@@ -5,7 +5,7 @@ add -C src  .
 
 # Phool
 
-add -t submodules/phool -C submodules/phool/src/classes .
+add -b submodules -C submodules/phool/src Phool
 
 #---------------------------------------------------------------------
 %options

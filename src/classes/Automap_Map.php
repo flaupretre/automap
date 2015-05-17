@@ -299,7 +299,7 @@ switch($entry['ptype'])
 		break;
 
 	case Automap::F_SCRIPT:
-		//PHO_Display::debug("Loading script file : $path");//TRACE
+		//\Phool\Display::debug("Loading script file : $path");//TRACE
 		{ require($path); }
 		break;
 
@@ -347,6 +347,22 @@ public function show($format=null,$subfile_to_url_function=null)
 return Automap_Display::show($this,$format,$subfile_to_url_function);
 }
 
+//---
+
+public function export($path=null)
+{
+if (is_null($path)) $path="php://stdout";
+$fp=fopen($path,'w');
+if (!$fp) throw new Exception("$path: Cannot open for writing");
+
+foreach($this->symbols() as $s)
+	{
+	fwrite($fp,$s['stype'].'|'.$s['symbol'].'|'.$s['ptype'].'|'.$s['rpath']."\n");
+	}
+
+fclose($fp);
+}
+
 //---------------------------------
 /**
 * Transmits map elements to the PECL extension
@@ -375,9 +391,9 @@ return $st;
 
 //============ Utilities (taken from external libs) ============
 // We need to duplicate these methods here because this class is included in the
-// PHK PHP runtime, which does not include the PHO_xxx classes.
+// PHK PHP runtime, which does not include the \Phool\xxx classes.
 
-//----- Taken from PHO_File
+//----- Taken from \Phool\File
 /**
 * Combines a base path with another path
 *
@@ -406,7 +422,6 @@ else	//-- Relative path : combine it to base
 return self::trailing_separ($res,$separ);
 }
 
-//----- Taken from PHO_File
 /**
 * Adds or removes a trailing separator in a path
 *
@@ -423,7 +438,6 @@ if ($separ) $path=$path.'/';
 return $path;
 }
 
-//----- Taken from PHO_File
 /**
 * Determines if a given path is absolute or relative
 *
@@ -438,7 +452,6 @@ return ((strpos($path,':')!==false)
 	||(strpos($path,'\\')===0));
 }
 
-//----- Taken from PHO_File
 /**
 * Build an absolute path from a given (absolute or relative) path
 *
