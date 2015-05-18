@@ -24,6 +24,9 @@
 */
 //============================================================================
 
+namespace Automap\Build {
+
+//=============================================================================
 //-- For PHP version < 5.3.0
 
 if (!defined('T_NAMESPACE')) define('T_NAMESPACE',-2);
@@ -33,7 +36,7 @@ if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
 
 //===========================================================================
 /**
-* The Automap_Parser class
+* The Automap parser
 *
 * This class detects and extracts symbols from PHP scripts and extensions
 *
@@ -41,17 +44,17 @@ if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
 */
 //===========================================================================
 
-if (!class_exists('Automap_Parser',false)) 
+if (!class_exists('Automap\Build\Parser',false)) 
 {
-class Automap_Parser implements Automap_Parser_Interface
+class Parser implements ParserInterface
 {
 //-- Parser states :
 
 const ST_OUT=1;						// Upper level
-const ST_FUNCTION_FOUND=Automap::T_FUNCTION; // Found 'function'. Looking for name
+const ST_FUNCTION_FOUND=\Automap\Mgr::T_FUNCTION; // Found 'function'. Looking for name
 const ST_SKIPPING_BLOCK_NOSTRING=3; // In block, outside of string
 const ST_SKIPPING_BLOCK_STRING=4;	// In block, in string
-const ST_CLASS_FOUND=Automap::T_CLASS;	// Found 'class'. Looking for name
+const ST_CLASS_FOUND=\Automap\Mgr::T_CLASS;	// Found 'class'. Looking for name
 const ST_DEFINE_FOUND=6;			// Found 'define'. Looking for '('
 const ST_DEFINE_2=7;				// Found '('. Looking for constant name
 const ST_SKIPPING_TO_EOL=8;			// Got constant. Looking for EOL (';')
@@ -92,7 +95,7 @@ if (count($this->exclude_list))
 	foreach(array_keys($this->symbols) as $n)
 		{
 		$s=$this->symbols[$n];
-		$key=Automap::key($s['type'],$s['name']);
+		$key=\Automap\Map::key($s['type'],$s['name']);
 		if (array_search($key,$this->exclude_list)!==false)
 			unset($this->symbols[$n]);
 		}
@@ -109,14 +112,14 @@ return $a;
 /**
 * Mark a symbol as excluded
 *
-* @param string $type one of the Automap::T_xx constants
+* @param string $type one of the \Automap\Mgr::T_xx constants
 * @param string $name The symbol name
 * @return null
 */
 
 private function exclude($type,$name)
 {
-$this->exclude_list[]=Automap::key($type,$name);
+$this->exclude_list[]=\Automap\Map::key($type,$name);
 }
 
 //---------------------------------
@@ -125,7 +128,7 @@ $this->exclude_list[]=Automap::key($type,$name);
 *
 * Filter out the symbol from the exclude list
 *
-* @param string $type one of the Automap::T_xx constants
+* @param string $type one of the \Automap\Mgr::T_xx constants
 * @param string $name The symbol name
 * @return null
 */
@@ -141,7 +144,7 @@ $this->symbols[]=array('type' => $type, 'name' => $name);
 *
 * @param string $file Extension name
 * @return null
-* @throw Exception if extension cannot be loaded
+* @throw \Exception if extension cannot be loaded
 */
 
 public function parse_extension($file)
@@ -151,31 +154,31 @@ $extension_list=get_loaded_extensions();
 @dl($file);
 $a=array_diff(get_loaded_extensions(),$extension_list);
 if (($ext_name=array_pop($a))===NULL)
-	throw new Exception($file.': Cannot load extension');
+	throw new \Exception($file.': Cannot load extension');
 
-$this->add_symbol(Automap::T_EXTENSION,$ext_name);
+$this->add_symbol(\Automap\Mgr::T_EXTENSION,$ext_name);
 
-$ext=new ReflectionExtension($ext_name);
+$ext=new \ReflectionExtension($ext_name);
 
 foreach($ext->getFunctions() as $func)
-	$this->add_symbol(Automap::T_FUNCTION,$func->getName());
+	$this->add_symbol(\Automap\Mgr::T_FUNCTION,$func->getName());
 
 foreach(array_keys($ext->getConstants()) as $constant)
-	$this->add_symbol(Automap::T_CONSTANT,$constant);
+	$this->add_symbol(\Automap\Mgr::T_CONSTANT,$constant);
 
 foreach($ext->getClasses() as $class)
-	$this->add_symbol(Automap::T_CLASS,$class->getName());
+	$this->add_symbol(\Automap\Mgr::T_CLASS,$class->getName());
 	
 if (method_exists($ext,'getInterfaces')) // Compatibility
 	{
 	foreach($ext->getInterfaces() as $interface)
-		$this->add_symbol(Automap::T_CLASS,$interface->getName());
+		$this->add_symbol(\Automap\Mgr::T_CLASS,$interface->getName());
 	}
 
 if (method_exists($ext,'getTraits')) // Compatibility
 	{
 	foreach($ext->getTraits() as $trait)
-		$this->add_symbol(Automap::T_CLASS,$trait->getName());
+		$this->add_symbol(\Automap\Mgr::T_CLASS,$trait->getName());
 	}
 
 return $this->cleanup();
@@ -234,8 +237,8 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 				$type_string=strtolower(strtok($match[2],' '));
 				$name=strtok(' ');
 				if ($type_string===false || $name===false)
-					throw new Exception($cmd.': Directive needs 2 args');
-				$type=Automap::string_to_type($type_string);
+					throw new \Exception($cmd.': Directive needs 2 args');
+				$type=\Automap\Mgr::string_to_type($type_string);
 				if ($cmd=='declare')
 					$this->add_symbol($type,$name);
 				else
@@ -243,7 +246,7 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 				break;
 
 			default:
-				throw new Exception($cmd.': Invalid Automap directive');
+				throw new \Exception($cmd.': Invalid Automap directive');
 			}
 		}
 	}
@@ -256,7 +259,7 @@ return true;
 *
 * @param string $path FIle to parse
 * @return array of symbols
-* @throws Exception on parse error
+* @throws \Exception on parse error
 */
 
 public function parse_script_file($path)
@@ -264,15 +267,15 @@ public function parse_script_file($path)
 try
 	{
 	// Don't run PECL accelerated read for virtual files
-	$buf=((function_exists('\\Automap\\Ext\\file_get_contents')
+	$buf=((function_exists('\Automap\Ext\file_get_contents')
 		&& (strpos($path,'://')===false)) ? 
 		\Automap\Ext\file_get_contents($path)
 		: file_get_contents($path));
 	$ret=$this->parse_script($buf);
 	return $ret;
 	}
-catch (Exception $e)
-	{ throw new Exception("$path: ".$e->getMessage()); }
+catch (\Exception $e)
+	{ throw new \Exception("$path: ".$e->getMessage()); }
 }
 
 //---------------------------------
@@ -281,7 +284,7 @@ catch (Exception $e)
 *
 * @param string $buf The script to parse
 * @return array of symbols
-* @throws Exception on parse error
+* @throws \Exception on parse error
 */
 
 public function parse_script($buf)
@@ -292,7 +295,7 @@ $skip_blocks=false;
 
 if (!$this->parse_script_directives($buf,$skip_blocks)) return array();
 
-if (function_exists('\\Automap\\Ext\\parse_tokens')) 
+if (function_exists('\Automap\Ext\parse_tokens')) 
 	{ // If PECL function is available
 	$a=\Automap\Ext\parse_tokens($buf,$skip_blocks);
 	//var_dump($a);//TRACE
@@ -300,7 +303,7 @@ if (function_exists('\\Automap\\Ext\\parse_tokens'))
 	}
 else
 	{
-	$this->parse_script_tokens($buf,$skip_blocks);
+	$this->parse_tokens($buf,$skip_blocks);
 	}
 
 return $this->cleanup();
@@ -311,7 +314,7 @@ return $this->cleanup();
 * Extract symbols from script tokens
 */
 
-private function parse_script_tokens($buf,$skip_blocks)
+private function parse_tokens($buf,$skip_blocks)
 {
 $block_level=0;
 $state=self::ST_OUT;
@@ -409,7 +412,7 @@ foreach(token_get_all($buf) as $token)
 				{
 				$this->add_symbol($state,self::combine_ns_symbol($ns,$tvalue));
 				}
-			else throw new Exception('Unrecognized token for class/function definition'
+			else throw new \Exception('Unrecognized token for class/function definition'
 				."(type=$tnum ($tname);value='$tvalue'). String expected");
 			$state=self::ST_SKIPPING_BLOCK_NOSTRING;
 			$block_level=0;
@@ -418,9 +421,9 @@ foreach(token_get_all($buf) as $token)
 		case self::ST_CONST_FOUND:
 			if ($tnum==T_STRING)
 				{
-				$this->add_symbol(Automap::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue));
+				$this->add_symbol(\Automap\Mgr::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue));
 				}
-			else throw new Exception('Unrecognized token for constant definition'
+			else throw new \Exception('Unrecognized token for constant definition'
 				."(type=$tnum ($tname);value='$tvalue'). String expected");
 			$state=self::ST_OUT;
 			break;
@@ -453,7 +456,7 @@ foreach(token_get_all($buf) as $token)
 
 		case self::ST_DEFINE_FOUND:
 			if ($tnum==-1 && $tvalue=='(') $state=self::ST_DEFINE_2;
-			else throw new Exception('Unrecognized token for constant definition'
+			else throw new \Exception('Unrecognized token for constant definition'
 				."(type=$tnum ($tname);value='$tvalue'). Expected '('");
 			break;
 
@@ -464,9 +467,9 @@ foreach(token_get_all($buf) as $token)
 				{
 				$schar=$tvalue{0};
 				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
-				$this->add_symbol(Automap::T_CONSTANT,$tvalue);
+				$this->add_symbol(\Automap\Mgr::T_CONSTANT,$tvalue);
 				}
-			else throw new Exception('Unrecognized token for constant definition'
+			else throw new \Exception('Unrecognized token for constant definition'
 				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant");
 			$state=self::ST_SKIPPING_TO_EOL;
 			break;
@@ -478,9 +481,11 @@ foreach(token_get_all($buf) as $token)
 	}
 }
 
-//---------
-} // End of class Automap_Parser
+//---
+} // End of class
 //===========================================================================
-} // End of class_exists('Automap_Parser')
+} // End of class_exists
+//===========================================================================
+} // End of namespace
 //===========================================================================
 ?>

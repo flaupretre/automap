@@ -5,7 +5,7 @@ add --strip --compress gzip --directory $(SOURCE) .
 
 #-- The license files
 
-add -C ../src etc/license.htm etc/license.txt
+add -C .. etc
 
 #-- The options
 %options

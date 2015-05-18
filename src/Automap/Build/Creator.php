@@ -16,8 +16,10 @@
 //   limitations under the License.
 //
 //=============================================================================
+
+//=============================================================================
 /**
-* The Automap_Creator class
+* The \Automap\Creator class
 *
 * This class creates map files
 *
@@ -28,14 +30,14 @@
 */
 //============================================================================
 
-if (!class_exists('Automap_Creator',false)) 
-{
-//------------------------------------------
+namespace Automap\Build {
 
-class Automap_Creator
+if (!class_exists('Automap\Build\Creator',false)) 
+{
+class Creator
 {
 const VERSION='3.0.0';		// Version set into the maps I produce
-const MIN_VERSION='3.0.0'; // Minimum version of runtime to understand the maps I produce
+const MIN_RUNTIME_VERSION='3.0.0'; // Minimum version of runtime able to understand the maps I produce
 
 //---------
 
@@ -46,7 +48,7 @@ private $options=array();
 
 private $php_file_ext=array('php','inc','hh');
 
-private $parser; // Must implement Automap_Parser_Interface
+private $parser; // Must implement \Automap\Build\ParserInterface
 
 //---------
 
@@ -59,7 +61,7 @@ $this->set_parser($parser);
 
 public function set_parser($parser=null)
 {
-if (is_null($parser)) $parser=new Automap_Parser();
+if (is_null($parser)) $parser=new Parser();
 $this->parser=$parser;
 }
 
@@ -74,7 +76,7 @@ return (isset($this->options[$opt]) ? $this->options[$opt] : null);
 
 public function set_option($option,$value)
 {
-PHO_Display::trace("Setting option $option=$value");
+\Phool\Display::trace("Setting option $option=$value");
 
 $this->options[$option]=$value;
 }
@@ -83,7 +85,7 @@ $this->options[$option]=$value;
 
 public function unset_option($option)
 {
-PHO_Display::trace("Unsetting option $option");
+\Phool\Display::trace("Unsetting option $option");
 
 if (isset($this->options[$option])) unset($this->options[$option]);
 }
@@ -108,7 +110,7 @@ else $this->php_file_ext[]=$a;
 
 private function add_entry($va)
 {
-$key=Automap::key($va['T'],$va['n']);
+$key=\Automap\Map::key($va['T'],$va['n']);
 
 // Filter namespace if filter specified
 
@@ -116,7 +118,7 @@ if (isset($va['f']))
 	{
 	$ns_list=$va['f'];
 	if (is_string($ns_list)) $ns_list=array($ns_list);
-	$ns=Automap_Map::ns_key($va['n']);
+	$ns=\Automap\Map::ns_key($va['n']);
 	$ok=false;
 	foreach($ns_list as $item)
 		{
@@ -129,14 +131,14 @@ if (isset($va['f']))
 		}
 	if (!$ok)
 		{
-		PHO_Display::debug("$key rejected by namespace filter");
+		\Phool\Display::debug("$key rejected by namespace filter");
 		return;
 		}
 	}
 
 // Add symbol to map if no conflict
 
-PHO_Display::debug("Adding symbol (key=<$key>, name=".$va['n']
+\Phool\Display::debug("Adding symbol (key=<$key>, name=".$va['n']
 	.", target=".$va['p'].' ('.$va['t'].')');
 
 if (isset($this->symbols[$key]))
@@ -146,11 +148,11 @@ if (isset($this->symbols[$key]))
 	if (($entry['t']!=$va['t'])||($entry['p']!=$va['p']))
 		{
 		echo "** Warning: Symbol multiply defined: "
-			.Automap::type_to_string($va['T'])
+			.\Automap\Mgr::type_to_string($va['T'])
 			.' '.$va['n']."\n	Previous location (kept): "
-			.Automap::type_to_string($entry['t'])
+			.\Automap\Mgr::type_to_string($entry['t'])
 			.' '.$entry['p']."\n	New location (discarded): "
-			.Automap::type_to_string($va['t'])
+			.\Automap\Mgr::type_to_string($va['t'])
 			.' '.$va['p']."\n";
 		}
 	}
@@ -198,13 +200,13 @@ private function unregister_target($va)
 {
 $type=$va['t'];
 $path=$va['p'];
-PHO_Display::debug("Unregistering path (type=$type, path=$path)");
+\Phool\Display::debug("Unregistering path (type=$type, path=$path)");
 
 foreach(array_keys($this->symbols) as $key)
 	{
 	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
 		{
-		PHO_Display::debug("Removing $key from symbol table");
+		\Phool\Display::debug("Removing $key from symbol table");
 		unset($this->symbols[$key]);
 		}
 	}
@@ -223,7 +225,7 @@ $slots=array();
 foreach($this->symbols as $key => $va)
 	{
 	$target=$va['t'].$va['p'];
-	$ns=Automap_Map::ns_key($va['n']);
+	$ns=\Automap\Map::ns_key($va['n']);
 	if (!array_key_exists($ns,$slots)) $slots[$ns]=array();
 	$slots[$ns][$key]=$target;
 	}
@@ -239,8 +241,8 @@ $data=serialize(array('map' => $slots, 'options' => $this->options));
 
 //-- Dump to file
 
-$buf=Automap::MAGIC
-	.str_pad(self::MIN_VERSION,12)
+$buf=\Automap\Map::MAGIC
+	.str_pad(self::MIN_RUNTIME_VERSION,12)
 	.str_pad(self::VERSION,12)
 	.str_pad(strlen($data)+70,8)
 	.'00000000'
@@ -255,12 +257,12 @@ return substr_replace($buf,hash('adler32',$buf),46,8); // Insert CRC
 
 public function save($path)
 {
-if (is_null($path)) throw new Exception('No path provided');
+if (is_null($path)) throw new \Exception('No path provided');
 
 $data=$this->serialize();
 
-PHO_Display::trace("$path: Writing map file");
-PHO_File::atomic_write($path,$data);
+\Phool\Display::trace("$path: Writing map file");
+\Phool\File::atomic_write($path,$data);
 }
 
 //---------
@@ -269,9 +271,9 @@ PHO_File::atomic_write($path,$data);
 
 public function register_extension_file($file)
 {
-PHO_Display::trace("Registering extension : $file");
+\Phool\Display::trace("Registering extension : $file");
 
-$va=self::mk_varray(Automap::F_EXTENSION,$file);
+$va=self::mk_varray(\Automap\Mgr::F_EXTENSION,$file);
 $this->unregister_target($va);
 
 foreach($this->parser->parse_extension($file) as $sym)
@@ -288,7 +290,7 @@ foreach($this->parser->parse_extension($file) as $sym)
 public function register_extension_dir()
 {
 $ext_dir=ini_get('extension_dir');
-PHO_Display::trace("Scanning extensions directory ($ext_dir)\n");
+\Phool\Display::trace("Scanning extensions directory ($ext_dir)\n");
 
 //-- Multiple passes because of possible dependencies
 //-- Loop until everything is loaded or we cannot load anything more
@@ -307,7 +309,7 @@ while(true)
 	foreach($f_to_load as $key => $ext_file)
 		{
 		try { $this->register_extension_file($ext_file); }
-		catch (Exception $e) { $f_failed[]=$ext_file; }
+		catch (\Exception $e) { $f_failed[]=$ext_file; }
 		}
 	//-- If we could load everything or if we didn't load anything, break
 	if ((count($f_failed)==0)||(count($f_failed)==count($f_to_load))) break;
@@ -317,7 +319,7 @@ while(true)
 if (count($f_failed))
 	{
 	foreach($f_failed as $file)
-		PHO_Display::warning("$file: This extension was not registered (load failed)");
+		\Phool\Display::warning("$file: This extension was not registered (load failed)");
 	}
 }
 
@@ -343,24 +345,17 @@ return $path;
 
 public function register_script_file($fpath,$rpath,$ns_filter=null)
 {
-PHO_Display::trace("Registering script $fpath as $rpath");
+\Phool\Display::trace("Registering script $fpath as $rpath");
 
 // Force relative path
 
-$va=self::mk_varray(Automap::F_SCRIPT,self::normalize_path($rpath),$ns_filter);
+$va=self::mk_varray(\Automap\Mgr::F_SCRIPT,self::normalize_path($rpath),$ns_filter);
 $this->unregister_target($va);
 
 foreach($this->parser->parse_script_file($fpath) as $sym)
 	{
 	$this->add_ts_entry($sym['type'],$sym['name'],$va);
 	}
-}
-
-//---------
-
-private function is_mapfile($path)
-{
-return (substr(file_get_contents($path),0,strlen(Automap::MAGIC))===Automap::MAGIC);
 }
 
 //---------
@@ -382,12 +377,12 @@ return (substr(file_get_contents($path),0,strlen(Automap::MAGIC))===Automap::MAG
 
 public function register_path($fpath,$rpath,$ns_filter=null,$file_pattern=null)
 {
-PHO_Display::trace("Registering path <$fpath> as <$rpath>");
+\Phool\Display::trace("Registering path <$fpath> as <$rpath>");
 
 switch($type=filetype($fpath))
 	{
 	case 'dir':
-		foreach(PHO_File::scandir($fpath) as $entry)
+		foreach(\Phool\File::scandir($fpath) as $entry)
 			{
 			$this->register_path($fpath.'/'.$entry,$rpath.'/'.$entry,$ns_filter);
 			}
@@ -395,13 +390,13 @@ switch($type=filetype($fpath))
 
 	case 'file':
 		if ((!is_null($file_pattern)) && (!preg_match($file_pattern, $fpath))) return;
-		$suffix=strtolower(PHO_File::file_suffix($fpath));
+		$suffix=strtolower(\Phool\File::file_suffix($fpath));
 		if ($suffix=='phk')
 			$this->register_phk($fpath,$rpath);
 		elseif (array_search($suffix,$this->php_file_ext)!==false)
 			$this->register_script_file($fpath,$rpath,$ns_filter);
 		else
-			PHO_Display::trace("Ignoring file $fpath (not a PHP script)");
+			\Phool\Display::trace("Ignoring file $fpath (not a PHP script)");
 		break;
 	}
 }
@@ -410,14 +405,12 @@ switch($type=filetype($fpath))
 
 public function read_map_file($fpath)
 {
-PHO_Display::trace("Reading map file ($fpath)");
+\Phool\Display::trace("Reading map file ($fpath)");
 
-$id=Automap::load($fpath,Automap::NO_AUTOLOAD);
-$map=Automap::map($id);
+$map=new \Automap\Map($fpath);
 $this->options=$map->options();
 $this->symbols=array();
 $this->merge_map_symbols($map);
-Automap::unload($id);
 }
 
 //---------
@@ -433,9 +426,9 @@ Automap::unload($id);
 
 public function merge_map_file($fpath,$rpath)
 {
-PHO_Display::debug("Merging map file from $fpath (rpath=$rpath)");
+\Phool\Display::debug("Merging map file from $fpath (rpath=$rpath)");
 
-$map=new Automap_Map($fpath);
+$map=new \Automap\Map($fpath);
 $this->merge_map_symbols($map,$rpath);
 }
 
@@ -445,7 +438,7 @@ public function merge_map_symbols($map,$rpath='.')
 {
 foreach($map->symbols() as $va)
 	{
-	$va['rpath']=PHO_FIle::combine_path($rpath,$va['rpath']);
+	$va['rpath']=\Phool\File::combine_path($rpath,$va['rpath']);
 	$this->add_entry($va);
 	}
 }
@@ -455,19 +448,19 @@ foreach($map->symbols() as $va)
 
 public function register_phk($fpath,$rpath)
 {
-PHO_Display::trace("Registering PHK package $fpath as $rpath");
+\Phool\Display::trace("Registering PHK package $fpath as $rpath");
 
 $rpath=self::normalize_path($rpath);
-PHO_Display::debug("Registering PHK package (path=$fpath, rpath=$rpath)");
-$va=self::mk_varray(Automap::F_PACKAGE,$rpath);
+\Phool\Display::debug("Registering PHK package (path=$fpath, rpath=$rpath)");
+$va=self::mk_varray(\Automap\Mgr::F_PACKAGE,$rpath);
 $this->unregister_target($va);
 
-$mnt=PHK_Mgr::mount($fpath,PHK::NO_MOUNT_SCRIPT);
-$pkg=PHK_Mgr::instance($mnt);
+$mnt=\PHK_Mgr::mount($fpath,\PHK::NO_MOUNT_SCRIPT);
+$pkg=\PHK_Mgr::instance($mnt);
 $id=$pkg->automap_id();
 if ($id) // If package has an automap
 	{
-	foreach(Automap::map($id)->symbols() as $sym)
+	foreach(\Automap\Mgr::map($id)->symbols() as $sym)
 		$this->add_ts_entry($sym['stype'],$sym['symbol'],$va);
 	}
 }
@@ -478,10 +471,10 @@ public function import($path=null)
 {
 if (is_null($path)) $path="php://stdin";
 
-PHO_Display::trace("Importing map from $path");
+\Phool\Display::trace("Importing map from $path");
 
 $fp=fopen($path,'r');
-if (!$fp) throw new Exception("$path: Cannot open for reading");
+if (!$fp) throw new \Exception("$path: Cannot open for reading");
 
 while(($line=fgets($fp))!==false)
 	{
@@ -493,9 +486,11 @@ while(($line=fgets($fp))!==false)
 fclose($fp);
 }
 
-//---------
-} // End of class Automap_Creator
+//---
+} // End of class
 //===========================================================================
-} // End of class_exists('Automap_Creator')
+} // End of class_exists
+//===========================================================================
+} // End of namespace
 //===========================================================================
 ?>

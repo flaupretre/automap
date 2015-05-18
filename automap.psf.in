@@ -1,11 +1,11 @@
 
-add -C src  .
+add src etc scripts
 
-# Submodules
+#-- Submodules
 
 # Phool
 
-add -b submodules -C submodules/phool/src Phool
+add -C submodules/phool src/Phool
 
 #---------------------------------------------------------------------
 %options

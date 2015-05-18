@@ -17,13 +17,13 @@
 //
 //=============================================================================
 /**
-* A map instance
+* A map instance (created from an existing map file)
 *
 * When the PECL extension is not present, this class is instantiated when the
 * map is loaded, and it is used by the autoloader.
 *
-* When the extension is present, this class is instantiated only after a call
-* to Automap::map() and is not used by the autoloader.
+* When the extension is present, this class is instantiated only when needed
+* and is not used by the autoloader.
 *
 * This file is included in the PHK PHP runtime.
 *
@@ -34,21 +34,25 @@
 */
 //===========================================================================
 
-//===========================================================================
-/**
-* Automap map instance
-*
-* This class allows to open and examine a map file. WHen the PECL extension is
-* not present, it is used for autoloading.
-*
-* @package Automap
-*/
-//===========================================================================
+namespace Automap {
 
-if (!class_exists('Automap_Map',false)) 
+if (!class_exists('Automap\Map',false)) 
 {
-class Automap_Map
+class Map
 {
+/** Runtime API version */
+
+const VERSION='3.0.0';
+
+/** We cannot load maps older than this version */
+ 
+const MIN_MAP_VERSION='3.0.0';
+
+/** Map files start with this string */
+
+const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
+
+//--------------------------
 /** The absolute path of the map file */
 
 private $path;			
@@ -69,7 +73,7 @@ private $symcount;
 
 private $options;
 
-/** @var string The version of Automap_Creator that created the map file */
+/** @var string The version of \Automap\Build\Creator that created the map file */
 
 private $version;
 
@@ -104,42 +108,42 @@ try
 //-- Get file content
 
 if (($buf=@file_get_contents($this->path))===false)
-	throw new Exception('Cannot read map file');
+	throw new \Exception('Cannot read map file');
 $bufsize=strlen($buf);
-if ($bufsize<70) throw new Exception("Short file (size=$bufsize)");
+if ($bufsize<70) throw new \Exception("Short file (size=$bufsize)");
 
 //-- Check magic
 
-if (substr($buf,0,14)!=Automap::MAGIC) throw new Exception('Bad Magic');
+if (substr($buf,0,14)!=self::MAGIC) throw new \Exception('Bad Magic');
 
 //-- Check min runtime version required by map
 
 $this->min_version=trim(substr($buf,14,12));	
-if (version_compare($this->min_version,Automap::VERSION) > 0)
-	throw new Exception($this->path.': Cannot understand this map.'.
+if (version_compare($this->min_version,self::VERSION) > 0)
+	throw new \Exception($this->path.': Cannot understand this map.'.
 		' Requires at least Automap version '.$this->min_version);
 
 //-- Check if the map format is not too old
 
 $this->version=trim(substr($buf,26,12));
 if (strlen($this->version)==0)
-	throw new Exception('Invalid empty map version');
-if (version_compare($this->version,Automap::MIN_MAP_VERSION) < 0)
-	throw new Exception('Cannot understand this map. Format too old.');
+	throw new \Exception('Invalid empty map version');
+if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
+	throw new \Exception('Cannot understand this map. Format too old.');
 $map_major_version=$this->version{0};
 
 //-- Check file size
 
 if (strlen($buf)!=($sz=(int)substr($buf,38,8)))
-	throw new Exception('Invalid file size. '.$sz.' should be '.strlen($buf));
+	throw new \Exception('Invalid file size. '.$sz.' should be '.strlen($buf));
 
 //-- Check CRC
 
-if (!($flags & Automap::CRC_CHECK))
+if (!($flags & Mgr::CRC_CHECK))
 	{
 	$crc=substr($buf,46,8);
 	$buf=substr_replace($buf,'00000000',46,8);
-	if ($crc!==hash('adler32',$buf)) throw new Exception('CRC error');
+	if ($crc!==hash('adler32',$buf)) throw new \Exception('CRC error');
 	}
 
 //-- Symbol count
@@ -150,15 +154,15 @@ $this->symcount=(int)substr($buf,54,8);
 
 $dsize=(int)substr($buf,62,8);
 if (($buf=unserialize(substr($buf,70,$dsize)))===false)
-	throw new Exception('Cannot unserialize data from map file');
+	throw new \Exception('Cannot unserialize data from map file');
 if (!is_array($buf))
-	throw new Exception('Map file should contain an array');
-if (!array_key_exists('options',$buf)) throw new Exception('No options array');
+	throw new \Exception('Map file should contain an array');
+if (!array_key_exists('options',$buf)) throw new \Exception('No options array');
 if (!is_array($this->options=$buf['options']))
-	throw new Exception('Options should be an array');
-if (!array_key_exists('map',$buf)) throw new Exception('No symbol table');
+	throw new \Exception('Options should be an array');
+if (!array_key_exists('map',$buf)) throw new \Exception('No symbol table');
 if (!is_array($this->slots=$buf['map']))
-	throw new Exception('Slot table should contain an array');
+	throw new \Exception('Slot table should contain an array');
 $this->symbols=array();
 
 //-- Compute base path
@@ -168,11 +172,38 @@ else $this->base_path=self::combine_path(dirname($this->path)
 	,$this->option('base_path'),true);
 
 }
-catch (Exception $e)
+catch (\Exception $e)
 	{
 	$this->symbols=array(); // No retry later
-	throw new Exception($path.': Cannot load map - '.$e->getMessage());
+	throw new \Exception($path.': Cannot load map - '.$e->getMessage());
 	}
+}
+
+//---------
+// Check if a given file is a map file
+
+public function is_mapfile($path)
+{
+return (substr(file_get_contents($path),0,strlen(self::MAGIC))===self::MAGIC);
+}
+
+//---------
+/**
+* Combines a type and a symbol in a 'key'
+*
+* Starting with version 3.0, Automap is fully case-sensitive. This allows for
+* higher performance and cleaner code.
+*
+* Do not use this method (reserved for use by other Automap classes)
+*
+* @param string $type one of the 'T_' constants
+* @param string $name The symbol value (case sensitive)
+* @return string Symbol key
+*/
+
+public static function key($type,$name)
+{
+return $type.trim($name,'\\');
 }
 
 //---------
@@ -248,7 +279,7 @@ $a=array(
 	'rpath'		=> substr($entry,1)
 	);
 
-$a['path']=(($a['ptype']===Automap::F_EXTENSION) ? $a['rpath']
+$a['path']=(($a['ptype']===Mgr::F_EXTENSION) ? $a['rpath']
 	: self::combine_path($this->base_path,$a['rpath']));
 
 return $a;
@@ -258,7 +289,7 @@ return $a;
 
 public function get_symbol($type,$symbol)
 {
-$key=Automap::key($type,$symbol);
+$key=self::key($type,$symbol);
 if (!($found=array_key_exists($key,$this->symbols)))
 	{
 	if (count($this->slots))
@@ -278,7 +309,7 @@ return ($found ? $this->export_entry($key) : false);
 * For performance reasons, we trust the map and don't check if the symbol is
 * defined after loading the script/extension/package.
 *
-* @param string $type One of the Automap::T_xxx symbol types
+* @param string $type One of the \Automap\Mgr::T_xxx symbol types
 * @param string Symbol name including namespace (no leading '\')
 * @param integer $id Used to return the ID of the map where the symbol was found
 * @return exported entry if found, false if not found
@@ -286,7 +317,7 @@ return ($found ? $this->export_entry($key) : false);
 
 public function resolve($type,$name,&$id)
 {
-if (($this->flags & Automap::NO_AUTOLOAD)
+if (($this->flags & Mgr::NO_AUTOLOAD)
 		|| (($entry=$this->get_symbol($type,$name))===false)) return false;
 
 //-- Found
@@ -294,16 +325,16 @@ if (($this->flags & Automap::NO_AUTOLOAD)
 $path=$entry['path']; // Absolute path
 switch($entry['ptype'])
 	{
-	case Automap::F_EXTENSION:
+	case Mgr::F_EXTENSION:
 		if (!dl($path)) return false;
 		break;
 
-	case Automap::F_SCRIPT:
+	case Mgr::F_SCRIPT:
 		//\Phool\Display::debug("Loading script file : $path");//TRACE
 		{ require($path); }
 		break;
 
-	case Automap::F_PACKAGE:
+	case Mgr::F_PACKAGE:
 		// Remove E_NOTICE messages if the test script is a package - workaround
 		// to PHP bug #39903 ('__COMPILER_HALT_OFFSET__ already defined')
 		// In case of embedded packages and maps, the returned ID corresponds to
@@ -312,13 +343,13 @@ switch($entry['ptype'])
 		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
 		$mnt=require($path);
 		error_reporting($errlevel);
-		$pkg=PHK_Mgr::instance($mnt);
+		$pkg=\PHK_Mgr::instance($mnt);
 		$id=$pkg->automap_id();
-		return Automap::map($id)->resolve($type,$name,$id);
+		return Mgr::map($id)->resolve($type,$name,$id);
 		break;
 
 	default:
-		throw new Exception('<'.$entry['ptype'].'>: Unknown target type');
+		throw new \Exception('<'.$entry['ptype'].'>: Unknown target type');
 	}
 return $entry;
 }
@@ -340,11 +371,19 @@ return $ret;
 }
 
 //---
-// Proxy to Automap_Display::show()
+// Proxy to \Automap\Tools\Display::show()
 
 public function show($format=null,$subfile_to_url_function=null)
 {
-return Automap_Display::show($this,$format,$subfile_to_url_function);
+return Tools\Display::show($this,$format,$subfile_to_url_function);
+}
+
+//---
+// Proxy to \Automap\Tools\Check::check()
+
+public function check()
+{
+return Tools\Check::check($this);
 }
 
 //---
@@ -353,7 +392,7 @@ public function export($path=null)
 {
 if (is_null($path)) $path="php://stdout";
 $fp=fopen($path,'w');
-if (!$fp) throw new Exception("$path: Cannot open for writing");
+if (!$fp) throw new \Exception("$path: Cannot open for writing");
 
 foreach($this->symbols() as $s)
 	{
@@ -369,7 +408,7 @@ fclose($fp);
 *
 * Reserved for internal use
 *
-* The first time a given map file is loaded, it is read by Automap_Map and
+* The first time a given map file is loaded, it is read by \Automap\Map and
 * transmitted to the extension. On subsequent requests, it is retrieved from
 * persistent memory. This allows to code complex features in PHP and maintain
 * the code in a single location without loosing in performance.
@@ -470,8 +509,10 @@ return self::trailing_separ($path,$separ);
 }
 
 //---
-} // End of class Automap_Map
+} // End of class
 //===========================================================================
-} // End of class_exists('Automap_Map')
+} // End of class_exists
+//===========================================================================
+} // End of namespace
 //===========================================================================
 ?>

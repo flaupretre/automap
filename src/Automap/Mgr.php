@@ -17,7 +17,7 @@
 //
 //=============================================================================
 /**
-* The Automap PHP runtime code
+* The Automap (PHP) manager.
 *
 * This code is never used when the PHK PECL extension is present.
 *
@@ -43,22 +43,12 @@
 */
 //===========================================================================
 
-if (!class_exists('Automap',false)) 
+namespace Automap {
+
+if (!class_exists('Automap\Mgr',false)) 
 {
-class Automap
+class Mgr
 {
-/** Runtime API version */
-
-const VERSION='3.0.0';
-
-/** We cannot load maps older than this version */
- 
-const MIN_MAP_VERSION='3.0.0';
-
-/** Map files start with this string */
-
-const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
-
 /** Symbol types */
 
 const T_FUNCTION='F';
@@ -116,7 +106,7 @@ private static $support_constant_autoload; //
 
 private static $support_function_autoload; // 
 
-/** @var array(<map ID> => <Automap_Map>) Array of active maps */
+/** @var array(<map ID> => <\Automap\Map>) Array of active maps */
 
 private static $maps=array();
 
@@ -135,10 +125,10 @@ public static function init()
 {
 // Determines if function/constant autoloading is supported
 
-$f=new ReflectionFunction('function_exists');
+$f=new \ReflectionFunction('function_exists');
 self::$support_function_autoload=($f->getNumberOfParameters()==2);
 
-$f=new ReflectionFunction('defined');
+$f=new \ReflectionFunction('defined');
 self::$support_constant_autoload=($f->getNumberOfParameters()==2);
 }
 
@@ -237,7 +227,7 @@ return $type.trim($name,'\\');
 public static function type_to_string($type)
 {
 if (!isset(self::$type_strings[$type]))
-	throw new Exception("$type: Invalid type");
+	throw new \Exception("$type: Invalid type");
 
 return self::$type_strings[$type];
 }
@@ -248,7 +238,7 @@ public static function string_to_type($string)
 {
 $type=array_search($string,self::$type_strings,true);
 
-if ($type===false) throw new Exception("$type: Invalid type");
+if ($type===false) throw new \Exception("$type: Invalid type");
 
 return $type;
 }
@@ -275,23 +265,23 @@ return isset(self::$maps[$id]);
 *
 * @param integer $id ID to check
 * @return integer ID (not modified)
-* @throws Exception if the ID is invalid (not loaded)
+* @throws \Exception if the ID is invalid (not loaded)
 */
 
 private static function validate($id)
 {
-if (!self::id_is_active($id)) throw new Exception($id.': Invalid map ID');
+if (!self::id_is_active($id)) throw new \Exception($id.': Invalid map ID');
 
 return $id;
 }
 
 //-----
 /**
-* Returns the Automap_Map object corresponding to an active map ID
+* Returns the \Automap\Map object corresponding to an active map ID
 *
 * @param string $id The map ID
-* @return Automap_Map instance
-* @throws Exception if map ID is invalid
+* @return \Automap\Map instance
+* @throws \Exception if map ID is invalid
 */
 
 public static function map($id)
@@ -325,11 +315,11 @@ return array_keys(self::$maps);
 
 public static function load($path,$flags=0,$_bp=null)
 {
-$map=new Automap_Map($path,$flags,$_bp);
+$map=new \Automap\Map($path,$flags,$_bp);
 
 $id=self::$load_index++;
 self::$maps[$id]=$map;
-// PHO_Display::info("Loaded $path as ID $id");//TRACE
+// \Phool\Display::info("Loaded $path as ID $id");//TRACE
 return $id;
 }
 
@@ -352,7 +342,7 @@ public static function unload($id)
 self::validate($id);
 
 unset(self::$maps[$id]);
-// PHO_Display::info("Unloaded ID $id");//TRACE
+// \Phool\Display::info("Unloaded ID $id");//TRACE
 }
 
 //---------------------------------
@@ -389,9 +379,9 @@ switch($type)
 * Reserved for internal use
 *
 * @param string $name Symbol name
-* @param string Symbol type. One of Automap::T_xxx. The default type is 'class',
+* @param string Symbol type. One of the T_xxx constants. The default type is 'class',
 *   and cannot be anything else as long as PHP does not support function/constant
-*   autoload.
+*   autoloading.
 */
 
 public static function autoload_hook($name,$type=self::T_CLASS)
@@ -410,14 +400,14 @@ self::resolve($type,$name,true,false);
 * (newest first).
 *
 * Warning: Autoload mechanism is not reentrant. This function cannot reference
-* an unknow class (like PHO_Display).
+* an unknow class (like \Phool\Display).
 *
 * @param string $type Symbol type
 * @param string $name Symbol name
 * @param bool $autoloading Whether this was called by the PHP autoloader
 * @param bool $exception Whether we must throw an exception if the resolution fails
 * @return true on success / false if unable to resolve symbol
-* @throw Exception
+* @throw \Exception
 */
 
 private static function resolve($type,$name,$autoloading=false
@@ -438,7 +428,7 @@ foreach(array_reverse(self::$maps,true) as $id => $map)
 // Failure
 
 self::call_failure_handlers($type,$name);
-if ($exception) throw new Exception('Automap: Unknown '
+if ($exception) throw new \Exception('Automap: Unknown '
 	.self::type_to_string($type).': '.$name);
 return false;
 }
@@ -473,7 +463,7 @@ public static function require_extension($name)
 	{ return self::resolve(self::T_EXTENSION,$name,false,true); }
 
 //---
-} // End of class Automap
+} // End of class
 //===========================================================================
 
 // Registers the automap callback (prepend)
@@ -481,13 +471,16 @@ public static function require_extension($name)
 if (!defined('_AUTOMAP_DISABLE_REGISTER'))
 	{
 	if (!extension_loaded('spl'))
-		throw new Exception("Automap requires the SPL extension");
+		throw new \Exception("Automap requires the SPL extension");
 
-	spl_autoload_register('Automap::autoload_hook',true,true);
+	spl_autoload_register('\Automap\Mgr::autoload_hook',true,true);
 	}
 
-Automap::init();
+Mgr::init();
 
-} // End of class_exists('Automap')
+//---
+} // End of class_exists
+//===========================================================================
+} // End of namespace
 //===========================================================================
 ?>

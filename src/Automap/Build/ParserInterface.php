@@ -26,15 +26,19 @@
 
 //===========================================================================
 /**
-* Automap_Parser_Interface
+* Parser interface
 *
-* A parser object used by Automap_Creator must implement this interface
+* A parser object used to create a map must implement this interface
 *
 * @package Automap
 */
 //===========================================================================
 
-interface Automap_Parser_Interface
+namespace Automap\Build {
+
+if (!interface_exists('Automap\Build\ParserInterface',false)) 
+{
+interface ParserInterface
 {
 
 //---------------------------------
@@ -43,7 +47,7 @@ interface Automap_Parser_Interface
 *
 * @param string $file Extension name
 * @return null
-* @throw Exception if extension cannot be loaded
+* @throw \Exception if extension cannot be loaded
 */
 
 public function parse_extension($file);
@@ -54,7 +58,7 @@ public function parse_extension($file);
 *
 * @param string $path FIle to parse
 * @return array of symbols
-* @throws Exception on parse error
+* @throws \Exception on parse error
 */
 
 public function parse_script_file($path);
@@ -65,12 +69,16 @@ public function parse_script_file($path);
 *
 * @param string $buf The script to parse
 * @return null
-* @throws Exception on parse error
+* @throws \Exception on parse error
 */
 
 public function parse_script($buf);
 
-//---------
-} // End of interface Automap_Parser_Interface
+//---
+} // End of class
+//===========================================================================
+} // End of interface_exists
+//===========================================================================
+} // End of namespace
 //===========================================================================
 ?>

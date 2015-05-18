@@ -17,7 +17,7 @@
 //
 //=============================================================================
 /**
-* This class manages options for Automap_Cmd
+* This class manages options for Automap\CLI\Cmd
 *
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
@@ -26,9 +26,11 @@
 */
 //============================================================================
 
-//-------------
+namespace Automap\CLI {
 
-class Automap_Cmd_Options extends PHO_Options
+if (!class_exists('Automap\CLI\Options',false)) 
+{
+class Options extends \Phool\Options\Base
 {
 
 // Short/long modifier args
@@ -64,11 +66,11 @@ protected function process_option($opt,$arg)
 switch($opt)
 	{
 	case 'v':
-		PHO_Display::inc_verbose();
+		\Phool\Display::inc_verbose();
 		break;
 
 	case 'q':
-		PHO_Display::dec_verbose();
+		\Phool\Display::dec_verbose();
 		break;
 
 	case 'm':
@@ -97,8 +99,11 @@ switch($opt)
 	}
 }
 
-//---------
-
-//============================================================================
+//---
 } // End of class
+//===========================================================================
+} // End of class_exists
+//===========================================================================
+} // End of namespace
+//===========================================================================
 ?>
