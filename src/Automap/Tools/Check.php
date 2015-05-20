@@ -71,9 +71,9 @@ foreach($map->symbols() as $s)
 
 				// Suppress notice msg on multiple HALT_COMPILER definitions
 				error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
-				$phk_id=\PHK_Mgr::mount($path,\PHK::F_NO_MOUNT_SCRIPT);
+				$phk_id=\PHK\Mgr::mount($path,\PHK::F_NO_MOUNT_SCRIPT);
 				error_reporting($errlevel);
-				$pkg=\PHK_Mgr::instance($phk_id);
+				$pkg=\PHK\Mgr::instance($phk_id);
 				self::check(\Automap\Mgr::map($pkg->automap_id()));
 				break;
 

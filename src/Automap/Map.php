@@ -330,7 +330,7 @@ switch($entry['ptype'])
 		break;
 
 	case Mgr::F_SCRIPT:
-		//\Phool\Display::debug("Loading script file : $path");//TRACE
+		//echo("Loading script file : $path\n");//TRACE
 		{ require($path); }
 		break;
 
@@ -343,7 +343,7 @@ switch($entry['ptype'])
 		error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
 		$mnt=require($path);
 		error_reporting($errlevel);
-		$pkg=\PHK_Mgr::instance($mnt);
+		$pkg=\PHK\_Mgr::instance($mnt);
 		$id=$pkg->automap_id();
 		return Mgr::map($id)->resolve($type,$name,$id);
 		break;

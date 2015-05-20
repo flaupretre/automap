@@ -455,8 +455,8 @@ $rpath=self::normalize_path($rpath);
 $va=self::mk_varray(\Automap\Mgr::F_PACKAGE,$rpath);
 $this->unregister_target($va);
 
-$mnt=\PHK_Mgr::mount($fpath,\PHK::NO_MOUNT_SCRIPT);
-$pkg=\PHK_Mgr::instance($mnt);
+$mnt=\PHK\Mgr::mount($fpath,\PHK::NO_MOUNT_SCRIPT);
+$pkg=\PHK\Mgr::instance($mnt);
 $id=$pkg->automap_id();
 if ($id) // If package has an automap
 	{

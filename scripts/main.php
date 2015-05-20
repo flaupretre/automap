@@ -49,7 +49,7 @@ CLI\Cmd::run($args);
 }
 catch(\Exception $e)
 	{
-	if (getenv('AUTOMAP_DEBUG')!==false) throw $e;
+	if (getenv('SHOW_EXCEPTION')!==false) throw $e;
 	else echo "*** ERROR: ".$e->getMessage()."\n\n";
 	exit(1);
 	}

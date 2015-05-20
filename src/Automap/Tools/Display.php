@@ -44,7 +44,7 @@ public static function show(\Automap\Map $map,$format=null
 if (is_null($format)||($format='auto'))
 	{
 	\PHK::need_php_runtime();
-	$format=(\PHK_Util::env_is_web() ? 'html' : 'text');
+	$format=(\PHK\Tools\Util::env_is_web() ? 'html' : 'text');
 	}
 
 switch($format)
