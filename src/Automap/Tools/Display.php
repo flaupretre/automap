@@ -64,6 +64,13 @@ switch($format)
 
 //---------
 
+private static function sort_method($s1,$s2)
+{
+return strcmp($s1['symbol'],$s2['symbol']);
+}
+
+//---------
+
 private static function show_text(\Automap\Map $map,$subfile_to_url_function=null)
 {
 echo "\n* Global information :\n\n";
@@ -86,7 +93,9 @@ echo "\n* Symbols :\n\n";
 $stype_len=$symbol_len=4;
 $rpath_len=10;
 
-foreach($map->symbols() as $s)
+$symbols=$map->symbols();
+usort($symbols,array(__CLASS__,'sort_method'));
+foreach($symbols as $s)
 	{
 	$stype_len=max($stype_len,strlen(\Automap\Mgr::type_to_string($s['stype']))+2);
 	$symbol_len=max($symbol_len,strlen($s['symbol'])+2);
@@ -105,7 +114,7 @@ echo '|---';
 echo '|'.str_repeat('-',$rpath_len);
 echo "|\n";
 
-foreach($map->symbols() as $s)
+foreach($symbols as $s)
 	{
 	echo '| '.str_pad(ucfirst(\Automap\Mgr::type_to_string($s['stype'])),$stype_len-1,' ',STR_PAD_RIGHT)
 		.'| '.str_pad($s['symbol'],$symbol_len-1,' ',STR_PAD_RIGHT)
@@ -151,7 +160,9 @@ echo "<h2>Symbols</h2>";
 echo '<table border=1 bordercolor="#BBBBBB" cellpadding=3 '
 	.'cellspacing=0 style="border-collapse: collapse"><tr><th>Type</th>'
 	.'<th>Name</th><th>FT</th><th>Defined in</th></tr>';
-foreach($map->symbols() as $s)
+$symbols=$map->symbols();
+usort($symbols,array(__CLASS__,'sort_method'));
+foreach($symbols as $s)
 	{
 	echo '<tr><td>'.ucfirst(\Automap\Mgr::type_to_string($s['stype'])).'</td><td>'
 		.htmlspecialchars($s['symbol'])
