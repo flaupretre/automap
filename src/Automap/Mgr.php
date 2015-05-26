@@ -466,14 +466,14 @@ public static function require_extension($name)
 } // End of class
 //===========================================================================
 
-// Registers the automap callback (prepend)
+// Registers the automap callback (append)
 
 if (!defined('_AUTOMAP_DISABLE_REGISTER'))
 	{
 	if (!extension_loaded('spl'))
 		throw new \Exception("Automap requires the SPL extension");
 
-	spl_autoload_register('\Automap\Mgr::autoload_hook',true,true);
+	spl_autoload_register('\Automap\Mgr::autoload_hook');
 	}
 
 Mgr::init();
