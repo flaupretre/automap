@@ -2,14 +2,14 @@
 
 TARGETS =
 
+all:
+
 include ../../make.vars
 include ../../make.common
 
 #-----------------------------------------------------------------------------
 
 .PHONY: all clean
-
-all:
 
 clean:
 

@@ -25,7 +25,7 @@ cd $SUBDIR
 flist=`cat $BASE/build/distrib_list.txt | grep -v '^#'`
 for i in $flist
 	do
-		( cd $BASE ; tar cf - $i ) | tar xvpf -
+		( cd $BASE ; tar cf - $i ) | tar xpf -
 done
 
 #----------------------------
