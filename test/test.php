@@ -38,23 +38,23 @@ $t->check('map object is instance of \Automap\Map (2)',($map2 instanceof \Automa
 $t->start('Versions');
 
 $t->check('version() returns string',is_string($map1->version()));
-$t->check('min_version() returns string',is_string($map1->min_version()));
+$t->check('minVersion() returns string',is_string($map1->minVersion()));
 
 //---------------------------------
 $t->start('Map IDs');
 
-$t->check('$id1 id_is_active() is true',\Automap\Mgr::id_is_active($id1));
+$t->check('$id1 isActiveID() is true',\Automap\Mgr::isActiveID($id1));
 
-$t->check('1000 is not an active ID',!\Automap\Mgr::id_is_active(1000));
+$t->check('1000 is not an active ID',!\Automap\Mgr::isActiveID(1000));
 
-$t->check('String is not an active ID',!\Automap\Mgr::id_is_active('<bad>'));
+$t->check('String is not an active ID',!\Automap\Mgr::isActiveID('<bad>'));
 
 //---------------------------------
 $t->start('load/unload');
 
 \Automap\Mgr::unload($id1);
 
-$t->check('id_is_active() false on unloaded ID',!\Automap\Mgr::id_is_active($id1));
+$t->check('isActiveID() false on unloaded ID',!\Automap\Mgr::isActiveID($id1));
 
 $ex=false;
 try { $map1->options(); }
@@ -84,7 +84,7 @@ try { $map1->options(); }
 catch (Exception $e) { $ex=true; }
 $t->check('Accessing a reloaded instance does not throw exception',!$ex);
 
-$t->check('Reloaded ID is still inactive',!\Automap\Mgr::id_is_active($prev_id1));
+$t->check('Reloaded ID is still inactive',!\Automap\Mgr::isActiveID($prev_id1));
 $t->check('Reloaded ID is different',($id1 != $prev_id1));
 
 $map1=\Automap\Mgr::map($id1);
@@ -101,9 +101,9 @@ $t->check('Options = array()',((is_array($a))&&(count($a)==0)));
 
 $t->check('Getting non-existant option returns null',is_null($map1->option('foo')));
 
-$t->check('symbol_count()',$map1->symbol_count()===MAP1_SYMCOUNT);
+$t->check('symbolCount()',$map1->symbolCount()===MAP1_SYMCOUNT);
 
-$t->check('using_accelerator()',\Automap\Mgr::using_accelerator()===$extension_present);
+$t->check('usingAccelerator()',\Automap\Mgr::usingAccelerator()===$extension_present);
 
 //---------------------------------
 $t->start('symbols() method');
@@ -136,52 +136,52 @@ $t->check('Directive declare works',$found_func1);
 
 $t->check('check() returns no error',count($map1->check())===0);
 
-$t->check('get_symbol() returns false on non existing symbol',$map1->get_symbol(\Automap\Mgr::T_CLASS,'nosuchclass')===false);
+$t->check('getSymbol() returns false on non existing symbol',$map1->getSymbol(\Automap\Mgr::T_CLASS,'nosuchclass')===false);
 
 //---------------------------------
 $t->start('Explicit get methods');
 
-$t->check('get_constant(<wrong name>) returns false',\Automap\Mgr::get_constant('invalid_name')===false);
+$t->check('getConstant(<wrong name>) returns false',\Automap\Mgr::getConstant('invalid_name')===false);
 
-$t->check('get_constant(<valid name>) returns true', \Automap\Mgr::get_constant('CONST11')===true);
-$t->check('get_constant() defines constant',defined('CONST11'));
+$t->check('getConstant(<valid name>) returns true', \Automap\Mgr::getConstant('CONST11')===true);
+$t->check('getConstant() defines constant',defined('CONST11'));
 
-$t->check('get_function(<wrong name>) returns false',\Automap\Mgr::get_function('foo')===false);
+$t->check('getFunction(<wrong name>) returns false',\Automap\Mgr::getFunction('foo')===false);
 
-$t->check('get_function(<valid name>) returns true', \Automap\Mgr::get_function('func12')===true);
-$t->check('get_function() defines function',function_exists('func12'));
+$t->check('getFunction(<valid name>) returns true', \Automap\Mgr::getFunction('func12')===true);
+$t->check('getFunction() defines function',function_exists('func12'));
 
-$t->check('get_class(<wrong name>) returns false',\Automap\Mgr::get_class('foo')===false);
+$t->check('getClass(<wrong name>) returns false',\Automap\Mgr::getClass('foo')===false);
 
-$t->check('get_class(<valid name>) returns true', \Automap\Mgr::get_class('c13')===true);
-$t->check('get_class() defines class',class_exists('c13',false));
+$t->check('getClass(<valid name>) returns true', \Automap\Mgr::getClass('c13')===true);
+$t->check('getClass() defines class',class_exists('c13',false));
 
 //----------
 $t->start('Explicit require methods');
 
 $ex=false;
-try { \Automap\Mgr::require_constant('invalid_name'); }
+try { \Automap\Mgr::requireConstant('invalid_name'); }
 catch (Exception $e) { $ex=true; }
-$t->check('require_constant(<wrong name>) throws exception',$ex);
+$t->check('requireConstant(<wrong name>) throws exception',$ex);
 
-$t->check('require_constant(<valid name>) returns true', \Automap\Mgr::require_constant('CONST21')===true);
-$t->check('require_constant() defines constant',defined('CONST21'));
+$t->check('requireConstant(<valid name>) returns true', \Automap\Mgr::requireConstant('CONST21')===true);
+$t->check('requireConstant() defines constant',defined('CONST21'));
 
 $ex=false;
-try { \Automap\Mgr::require_function('invalid_name'); }
+try { \Automap\Mgr::requireFunction('invalid_name'); }
 catch (Exception $e) { $ex=true; }
-$t->check('require_function(<wrong name>) throws exception',$ex);
+$t->check('requireFunction(<wrong name>) throws exception',$ex);
 
-$t->check('require_function(<valid name>) returns true', \Automap\Mgr::require_function('func22')===true);
-$t->check('require_function() defines function',function_exists('func22'));
+$t->check('requireFunction(<valid name>) returns true', \Automap\Mgr::requireFunction('func22')===true);
+$t->check('requireFunction() defines function',function_exists('func22'));
 
 $ex=false;
-try { \Automap\Mgr::require_class('invalid_name'); }
+try { \Automap\Mgr::requireClass('invalid_name'); }
 catch (Exception $e) { $ex=true; }
-$t->check('require_class(<wrong name>) throws exception',$ex);
+$t->check('requireClass(<wrong name>) throws exception',$ex);
 
-$t->check('require_class(<valid name>) returns true', \Automap\Mgr::require_class('c23')===true);
-$t->check('require_class() defines class',class_exists('c23',false));
+$t->check('requireClass(<valid name>) returns true', \Automap\Mgr::requireClass('c23')===true);
+$t->check('requireClass() defines class',class_exists('c23',false));
 
 //---------------------------------
 $t->start('Autoloading');
@@ -219,26 +219,26 @@ $stype=$entry['stype'];
 $sname=$entry['symbol'];
 $map=\Automap\Mgr::map($id);
 
-$t->check('Handler receives the right map',$map->symbol_count()===MAP1_SYMCOUNT);
+$t->check('Handler receives the right map',$map->symbolCount()===MAP1_SYMCOUNT);
 $t->check('Handler receives the right symbol type',$stype===\Automap\Mgr::T_CLASS);
 $t->check('Handler receives the right symbol name',$sname==='c14');
 $t->check('Success handler: checking file existence (absolute path)',file_exists($entry['path']));
 
-$sym=$map->get_symbol($stype,$sname);
+$sym=$map->getSymbol($stype,$sname);
 
-$t->check('Success handler: get_symbol(): returned element is array',is_array($sym));
-$t->check('Success handler: get_symbol() returns correct symbol type',$sym['stype']===\Automap\Mgr::T_CLASS);
-$t->check('Success handler: get_symbol() returns correct symbol name',$sym['symbol']==='c14');
-$t->check('Success handler: get_symbol() returns correct path type',$sym['ptype']===\Automap\Mgr::F_SCRIPT);
-$t->check('Success handler: get_symbol(): returned correct relative path',$sym['rpath']==='src1/classes/file14.php');
-$t->check('Success handler: get_symbol(): checking file existence (relative path)',file_exists($sym['rpath']));
+$t->check('Success handler: getSymbol(): returned element is array',is_array($sym));
+$t->check('Success handler: getSymbol() returns correct symbol type',$sym['stype']===\Automap\Mgr::T_CLASS);
+$t->check('Success handler: getSymbol() returns correct symbol name',$sym['symbol']==='c14');
+$t->check('Success handler: getSymbol() returns correct path type',$sym['ptype']===\Automap\Mgr::F_SCRIPT);
+$t->check('Success handler: getSymbol(): returned correct relative path',$sym['rpath']==='src1/classes/file14.php');
+$t->check('Success handler: getSymbol(): checking file existence (relative path)',file_exists($sym['rpath']));
 
 $GLOBALS['success_handler_called']=true;
 }
 
 //------
 
-\Automap\Mgr::register_success_handler('success_func');
+\Automap\Mgr::registerSuccessHandler('success_func');
 $GLOBALS['success_handler_called']=false;
 $GLOBALS['failure_handler_called']=false;
 $t->check('Load class through class_exists()',class_exists('c14',1));
@@ -260,7 +260,7 @@ $t->check('Handler receives the right symbol name',$sname==='Inexistent_Class');
 $GLOBALS['failure_handler_called']=true;
 }
 
-\Automap\Mgr::register_failure_handler('failure_func');
+\Automap\Mgr::registerFailureHandler('failure_func');
 $GLOBALS['success_handler_called']=false;
 $GLOBALS['failure_handler_called']=false;
 $t->check('Load invalid class through class_exists() fails',!class_exists('Inexistent_Class',1));

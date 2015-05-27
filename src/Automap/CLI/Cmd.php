@@ -34,7 +34,7 @@ class Cmd
 {
 //---------
 
-private static function error_abort($msg,$usage=true)
+private static function errorAbort($msg,$usage=true)
 {
 if ($usage) $msg .= " - Use 'help' command for syntax";
 throw new \Exception($msg);
@@ -77,10 +77,10 @@ Available commands :
                         from stdin.
             -a : If the map file exists, add symbols without recreating it
 
-  - set_option <name> <value>
+  - setOption <name> <value>
         Sets an option in an existing map
 
-  - unset_option <name>
+  - unsetOption <name>
         Unsets an option in an existing map
 
   - help
@@ -103,7 +103,7 @@ More information at http://automap.tekwire.net\n\n";
 public static function run($args)
 {
 $op=new Options;
-$op->parse_all($args);
+$op->parseAll($args);
 $action=(count($args)) ? array_shift($args) : 'help';
 
 switch($action)
@@ -123,21 +123,21 @@ switch($action)
 			}
 		break;
 
-	case 'set_option':
-		if (count($args)!=2) self::error_abort('set_option requires 2 arguments');
+	case 'setOption':
+		if (count($args)!=2) self::errorAbort('setOption requires 2 arguments');
 		list($name,$value)=$args;
 		$map=new \Automap\Build\Creator();
-		$map->read_map_file($op->option('map_path'));
-		$map->set_option($name,$value);
+		$map->readMapFile($op->option('map_path'));
+		$map->setOption($name,$value);
 		$map->save($op->option('map_path'));
 		break;
 
-	case 'unset_option':
-		if (count($args)!=1) self::error_abort('unset_option requires 1 argument');
+	case 'unsetOption':
+		if (count($args)!=1) self::errorAbort('unsetOption requires 1 argument');
 		$name=array_shift($args);
 		$map=new \Automap\Build\Creator();
-		$map->read_map_file($op->option('map_path'));
-		$map->unset_option($name);
+		$map->readMapFile($op->option('map_path'));
+		$map->unsetOption($name);
 		$map->save($op->option('map_path'));
 		break;
 
@@ -151,23 +151,23 @@ switch($action)
 
 		$map=new \Automap\Build\Creator();
 		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->read_map_file($op->option('map_path'));
-		$map->register_extension_dir();
+			$map->readMapFile($op->option('map_path'));
+		$map->registerExtensionDir();
 		$map->save($op->option('map_path'));
 		break;
 
 	case 'register':
 		$map=new \Automap\Build\Creator();
 		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->read_map_file($op->option('map_path'));
-		$abs_map_dir=\Phool\File::mk_absolute_path(dirname($op->option('map_path')));
+			$map->readMapFile($op->option('map_path'));
+		$abs_map_dir=\Phool\File::mkAbsolutePath(dirname($op->option('map_path')));
 		if (!is_null($op->option('base_path')))
-			$map->set_option('base_path',$op->option('base_path'));
-		$abs_base=\Phool\File::combine_path($abs_map_dir,$map->option('base_path'));
+			$map->setOption('base_path',$op->option('base_path'));
+		$abs_base=\Phool\File::combinePath($abs_map_dir,$map->option('base_path'));
 		foreach($args as $rpath)
 			{
-			$abs_path=\Phool\File::combine_path($abs_base,$rpath);
-			$map->register_path($abs_path,$rpath);
+			$abs_path=\Phool\File::combinePath($abs_base,$rpath);
+			$map->registerPath($abs_path,$rpath);
 			}
 		$map->save($op->option('map_path'));
 		break;
@@ -180,7 +180,7 @@ switch($action)
 	case 'import':
 		$map=new \Automap\Build\Creator();
 		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->read_map_file($op->option('map_path'));
+			$map->readMapFile($op->option('map_path'));
 		$map->import($op->option('input'));
 		$map->save($op->option('map_path'));
 		break;
@@ -190,7 +190,7 @@ switch($action)
 		break;
 
 	default:
-		self::error_abort("Unknown action: '$action'");
+		self::errorAbort("Unknown action: '$action'");
 	}
 }
 

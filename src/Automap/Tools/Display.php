@@ -43,18 +43,18 @@ public static function show(\Automap\Map $map,$format=null
 {
 if (is_null($format)||($format='auto'))
 	{
-	\PHK::need_php_runtime();
-	$format=(\PHK\Tools\Util::env_is_web() ? 'html' : 'text');
+	\PHK::needPhpRuntime();
+	$format=(\PHK\Tools\Util::envIsWeb() ? 'html' : 'text');
 	}
 
 switch($format)
 	{
 	case 'text':
-		self::show_text($map,$subfile_to_url_function);
+		self::showText($map,$subfile_to_url_function);
 		break;
 
 	case 'html':
-		self::show_text($map,$subfile_to_url_function);
+		self::showHtml($map,$subfile_to_url_function);
 		break;
 
 	default:
@@ -64,19 +64,19 @@ switch($format)
 
 //---------
 
-private static function sort_method($s1,$s2)
+private static function sortMethod($s1,$s2)
 {
 return strcmp($s1['symbol'],$s2['symbol']);
 }
 
 //---------
 
-private static function show_text(\Automap\Map $map,$subfile_to_url_function=null)
+private static function showText(\Automap\Map $map,$subfile_to_url_function=null)
 {
 echo "\n* Global information :\n\n";
 echo '	Map version : '.$map->version()."\n";
-echo '	Min reader version : '.$map->min_version()."\n";
-echo '	Symbol count : '.$map->symbol_count()."\n";
+echo '	Min reader version : '.$map->minVersion()."\n";
+echo '	Symbol count : '.$map->symbolCount()."\n";
 
 echo "\n* Options :\n\n";
 
@@ -94,10 +94,10 @@ $stype_len=$symbol_len=4;
 $rpath_len=10;
 
 $symbols=$map->symbols();
-usort($symbols,array(__CLASS__,'sort_method'));
+usort($symbols,array(__CLASS__,'sortMethod'));
 foreach($symbols as $s)
 	{
-	$stype_len=max($stype_len,strlen(\Automap\Mgr::type_to_string($s['stype']))+2);
+	$stype_len=max($stype_len,strlen(\Automap\Mgr::typeToString($s['stype']))+2);
 	$symbol_len=max($symbol_len,strlen($s['symbol'])+2);
 	$rpath_len=max($rpath_len,strlen($s['rpath'])+2);
 	}
@@ -116,7 +116,7 @@ echo "|\n";
 
 foreach($symbols as $s)
 	{
-	echo '| '.str_pad(ucfirst(\Automap\Mgr::type_to_string($s['stype'])),$stype_len-1,' ',STR_PAD_RIGHT)
+	echo '| '.str_pad(ucfirst(\Automap\Mgr::typeToString($s['stype'])),$stype_len-1,' ',STR_PAD_RIGHT)
 		.'| '.str_pad($s['symbol'],$symbol_len-1,' ',STR_PAD_RIGHT)
 		.'| '.$s['ptype'].' '
 		.'| '.str_pad($s['rpath'],$rpath_len-1,' ',STR_PAD_RIGHT)
@@ -127,7 +127,7 @@ foreach($symbols as $s)
 //---
 // The same in HTML
 
-private static function show_html(\Automap\Map $map,$subfile_to_url_function=null)
+private static function showHtml(\Automap\Map $map,$subfile_to_url_function=null)
 {
 echo "<h2>Global information</h2>";
 
@@ -135,9 +135,9 @@ echo '<table border=0>';
 echo '<tr><td>Map version:&nbsp;</td><td>'
 	.htmlspecialchars($map->version()).'</td></tr>';
 echo '<tr><td>Min reader version:&nbsp;</td><td>'
-	.htmlspecialchars($map->min_version()).'</td></tr>';
+	.htmlspecialchars($map->minVersion()).'</td></tr>';
 echo '<tr><td>Symbol count:&nbsp;</td><td>'
-	.$map->symbol_count().'</td></tr>';
+	.$map->symbolCount().'</td></tr>';
 echo '</table>';
 
 echo "<h2>Options</h2>";
@@ -161,10 +161,10 @@ echo '<table border=1 bordercolor="#BBBBBB" cellpadding=3 '
 	.'cellspacing=0 style="border-collapse: collapse"><tr><th>Type</th>'
 	.'<th>Name</th><th>FT</th><th>Defined in</th></tr>';
 $symbols=$map->symbols();
-usort($symbols,array(__CLASS__,'sort_method'));
+usort($symbols,array(__CLASS__,'sortMethod'));
 foreach($symbols as $s)
 	{
-	echo '<tr><td>'.ucfirst(\Automap\Mgr::type_to_string($s['stype'])).'</td><td>'
+	echo '<tr><td>'.ucfirst(\Automap\Mgr::typeToString($s['stype'])).'</td><td>'
 		.htmlspecialchars($s['symbol'])
 		.'</td><td align=center>'.$s['ptype'].'</td><td>';
 	if (!is_null($subfile_to_url_function)) 

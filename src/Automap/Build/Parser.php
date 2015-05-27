@@ -29,9 +29,13 @@ namespace Automap\Build {
 //=============================================================================
 //-- For PHP version < 5.3.0
 
+// <Automap>:ignore constant T_NAMESPACE
 if (!defined('T_NAMESPACE')) define('T_NAMESPACE',-2);
+// <Automap>:ignore constant T_NS_SEPARATOR
 if (!defined('T_NS_SEPARATOR'))	define('T_NS_SEPARATOR',-3);
+// <Automap>:ignore constant T_CONST
 if (!defined('T_CONST'))	define('T_CONST',-4);
+// <Automap>:ignore constant T_TRAIT
 if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
 
 //===========================================================================
@@ -133,7 +137,7 @@ $this->exclude_list[]=\Automap\Map::key($type,$name);
 * @return null
 */
 
-private function add_symbol($type,$name)
+private function addSymbol($type,$name)
 {
 $this->symbols[]=array('type' => $type, 'name' => $name);
 }
@@ -147,7 +151,7 @@ $this->symbols[]=array('type' => $type, 'name' => $name);
 * @throw \Exception if extension cannot be loaded
 */
 
-public function parse_extension($file)
+public function parseExtension($file)
 {
 $extension_list=get_loaded_extensions();
 
@@ -156,29 +160,29 @@ $a=array_diff(get_loaded_extensions(),$extension_list);
 if (($ext_name=array_pop($a))===NULL)
 	throw new \Exception($file.': Cannot load extension');
 
-$this->add_symbol(\Automap\Mgr::T_EXTENSION,$ext_name);
+$this->addSymbol(\Automap\Mgr::T_EXTENSION,$ext_name);
 
 $ext=new \ReflectionExtension($ext_name);
 
 foreach($ext->getFunctions() as $func)
-	$this->add_symbol(\Automap\Mgr::T_FUNCTION,$func->getName());
+	$this->addSymbol(\Automap\Mgr::T_FUNCTION,$func->getName());
 
 foreach(array_keys($ext->getConstants()) as $constant)
-	$this->add_symbol(\Automap\Mgr::T_CONSTANT,$constant);
+	$this->addSymbol(\Automap\Mgr::T_CONSTANT,$constant);
 
 foreach($ext->getClasses() as $class)
-	$this->add_symbol(\Automap\Mgr::T_CLASS,$class->getName());
+	$this->addSymbol(\Automap\Mgr::T_CLASS,$class->getName());
 	
 if (method_exists($ext,'getInterfaces')) // Compatibility
 	{
 	foreach($ext->getInterfaces() as $interface)
-		$this->add_symbol(\Automap\Mgr::T_CLASS,$interface->getName());
+		$this->addSymbol(\Automap\Mgr::T_CLASS,$interface->getName());
 	}
 
 if (method_exists($ext,'getTraits')) // Compatibility
 	{
 	foreach($ext->getTraits() as $trait)
-		$this->add_symbol(\Automap\Mgr::T_CLASS,$trait->getName());
+		$this->addSymbol(\Automap\Mgr::T_CLASS,$trait->getName());
 	}
 
 return $this->cleanup();
@@ -197,7 +201,7 @@ return $this->cleanup();
 * @return string Fully qualified name without leading backslash
 */
 
-private static function combine_ns_symbol($ns,$symbol)
+private static function combineNSSymbol($ns,$symbol)
 {
 $ns=trim($ns,'\\');
 return $ns.(($ns==='') ? '' : '\\').$symbol;
@@ -216,7 +220,7 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 * @return bool false if indexing is disabled on this file
 */
 
-private function parse_script_directives($buf,&$skip_blocks)
+private function parseAutomapDirectives($buf,&$skip_blocks)
 {
 $a=null;
 if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
@@ -238,9 +242,9 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 				$name=strtok(' ');
 				if ($type_string===false || $name===false)
 					throw new \Exception($cmd.': Directive needs 2 args');
-				$type=\Automap\Mgr::string_to_type($type_string);
+				$type=\Automap\Mgr::stringToType($type_string);
 				if ($cmd=='declare')
-					$this->add_symbol($type,$name);
+					$this->addSymbol($type,$name);
 				else
 					$this->exclude($type,$name);
 				break;
@@ -262,7 +266,7 @@ return true;
 * @throws \Exception on parse error
 */
 
-public function parse_script_file($path)
+public function parseScriptFile($path)
 {
 try
 	{
@@ -271,7 +275,7 @@ try
 		&& (strpos($path,'://')===false)) ? 
 		\Automap\Ext\file_get_contents($path)
 		: file_get_contents($path));
-	$ret=$this->parse_script($buf);
+	$ret=$this->parseScript($buf);
 	return $ret;
 	}
 catch (\Exception $e)
@@ -287,23 +291,23 @@ catch (\Exception $e)
 * @throws \Exception on parse error
 */
 
-public function parse_script($buf)
+public function parseScript($buf)
 {
 $buf=str_replace("\r",'',$buf);
 
 $skip_blocks=false;
 
-if (!$this->parse_script_directives($buf,$skip_blocks)) return array();
+if (!$this->parseAutomapDirectives($buf,$skip_blocks)) return array();
 
-if (function_exists('\Automap\Ext\parse_tokens')) 
+if (function_exists('\Automap\Ext\parseTokens')) 
 	{ // If PECL function is available
-	$a=\Automap\Ext\parse_tokens($buf,$skip_blocks);
+	$a=\Automap\Ext\parseTokens($buf,$skip_blocks);
 	//var_dump($a);//TRACE
-	foreach($a as $k) $this->add_symbol($k{0},substr($k,1));
+	foreach($a as $k) $this->addSymbol($k{0},substr($k,1));
 	}
 else
 	{
-	$this->parse_tokens($buf,$skip_blocks);
+	$this->parseTokens($buf,$skip_blocks);
 	}
 
 return $this->cleanup();
@@ -314,7 +318,7 @@ return $this->cleanup();
 * Extract symbols from script tokens
 */
 
-private function parse_tokens($buf,$skip_blocks)
+private function parseTokens($buf,$skip_blocks)
 {
 $block_level=0;
 $state=self::ST_OUT;
@@ -410,7 +414,7 @@ foreach(token_get_all($buf) as $token)
 		case self::ST_CLASS_FOUND:
 			if ($tnum==T_STRING)
 				{
-				$this->add_symbol($state,self::combine_ns_symbol($ns,$tvalue));
+				$this->addSymbol($state,self::combineNSSymbol($ns,$tvalue));
 				}
 			else throw new \Exception('Unrecognized token for class/function definition'
 				."(type=$tnum ($tname);value='$tvalue'). String expected");
@@ -421,7 +425,7 @@ foreach(token_get_all($buf) as $token)
 		case self::ST_CONST_FOUND:
 			if ($tnum==T_STRING)
 				{
-				$this->add_symbol(\Automap\Mgr::T_CONSTANT,self::combine_ns_symbol($ns,$tvalue));
+				$this->addSymbol(\Automap\Mgr::T_CONSTANT,self::combineNSSymbol($ns,$tvalue));
 				}
 			else throw new \Exception('Unrecognized token for constant definition'
 				."(type=$tnum ($tname);value='$tvalue'). String expected");
@@ -467,7 +471,7 @@ foreach(token_get_all($buf) as $token)
 				{
 				$schar=$tvalue{0};
 				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
-				$this->add_symbol(\Automap\Mgr::T_CONSTANT,$tvalue);
+				$this->addSymbol(\Automap\Mgr::T_CONSTANT,$tvalue);
 				}
 			else throw new \Exception('Unrecognized token for constant definition'
 				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant");

@@ -79,7 +79,7 @@ private $version;
 
 /** @var string The minimum runtime version needed to understand the map file */
 
-private $min_version;
+private $minVersion;
 
 /** @var integer Load flags */
 
@@ -87,7 +87,7 @@ private $flags;
 
 /** @var string Absolute base path */
 
-private $base_path;
+private $basePath;
 
 //-----
 /**
@@ -100,7 +100,7 @@ private $base_path;
 
 public function __construct($path,$flags=0,$_bp=null)
 {
-$this->path=self::mk_absolute_path($path);
+$this->path=self::mkAbsolutePath($path);
 $this->flags=$flags;
 
 try
@@ -118,10 +118,10 @@ if (substr($buf,0,14)!=self::MAGIC) throw new \Exception('Bad Magic');
 
 //-- Check min runtime version required by map
 
-$this->min_version=trim(substr($buf,14,12));	
-if (version_compare($this->min_version,self::VERSION) > 0)
+$this->minVersion=trim(substr($buf,14,12));	
+if (version_compare($this->minVersion,self::VERSION) > 0)
 	throw new \Exception($this->path.': Cannot understand this map.'.
-		' Requires at least Automap version '.$this->min_version);
+		' Requires at least Automap version '.$this->minVersion);
 
 //-- Check if the map format is not too old
 
@@ -167,9 +167,9 @@ $this->symbols=array();
 
 //-- Compute base path
 
-if (!is_null($_bp)) $this->base_path=$_bp;
-else $this->base_path=self::combine_path(dirname($this->path)
-	,$this->option('base_path'),true);
+if (!is_null($_bp)) $this->basePath=$_bp;
+else $this->basePath=self::combinePath(dirname($this->path)
+	,$this->option('basePath'),true);
 
 }
 catch (\Exception $e)
@@ -182,7 +182,7 @@ catch (\Exception $e)
 //---------
 // Check if a given file is a map file
 
-public function is_mapfile($path)
+public function isMapFile($path)
 {
 return (substr(file_get_contents($path),0,strlen(self::MAGIC))===self::MAGIC);
 }
@@ -214,7 +214,7 @@ return $type.trim($name,'\\');
 * @return null
 */
 
-private function load_slot($ns)
+private function loadSlot($ns)
 {
 $this->symbols=array_merge($this->symbols,unserialize($this->slots[$ns]));
 unset($this->slots[$ns]);
@@ -232,7 +232,7 @@ unset($this->slots[$ns]);
 * @return string Namespace. If no namespace, returns an empty string.
 */
 
-public static function ns_key($name)
+public static function nsKey($name)
 {
 $name=trim($name,'\\');
 $pos=strrpos($name,'\\');
@@ -247,8 +247,8 @@ public function path() { return $this->path; }
 public function flags() { return $this->flags; }
 public function options() { return $this->options; }
 public function version() { return $this->version; }
-public function min_version() { return $this->min_version; }
-public function base_path() { return $this->base_path; }
+public function minVersion() { return $this->minVersion; }
+public function basePath() { return $this->basePath; }
 
 //---
 
@@ -259,16 +259,16 @@ return (isset($this->options[$opt]) ? $this->options[$opt] : null);
 
 //---
 
-public function symbol_count()
+public function symbolCount()
 {
 return $this->symcount;
 }
 
 //---
 // The entry we are exporting must be in the symbol table (no check)
-// We need to use combine_path() because the registered path (rpath) can be absolute
+// We need to use combinePath() because the registered path (rpath) can be absolute
 
-private function export_entry($key)
+private function exportEntry($key)
 {
 $entry=$this->symbols[$key];
 
@@ -280,26 +280,26 @@ $a=array(
 	);
 
 $a['path']=(($a['ptype']===Mgr::F_EXTENSION) ? $a['rpath']
-	: self::combine_path($this->base_path,$a['rpath']));
+	: self::combinePath($this->basePath,$a['rpath']));
 
 return $a;
 }
 
 //---
 
-public function get_symbol($type,$symbol)
+public function getSymbol($type,$symbol)
 {
 $key=self::key($type,$symbol);
 if (!($found=array_key_exists($key,$this->symbols)))
 	{
 	if (count($this->slots))
 		{
-		$ns=self::ns_key($symbol);
-		if (array_key_exists($ns,$this->slots)) $this->load_slot($ns);
+		$ns=self::nsKey($symbol);
+		if (array_key_exists($ns,$this->slots)) $this->loadSlot($ns);
 		$found=array_key_exists($key,$this->symbols);
 		}
 	}
-return ($found ? $this->export_entry($key) : false);
+return ($found ? $this->exportEntry($key) : false);
 }
 
 //-------
@@ -318,7 +318,7 @@ return ($found ? $this->export_entry($key) : false);
 public function resolve($type,$name,&$id)
 {
 if (($this->flags & Mgr::NO_AUTOLOAD)
-		|| (($entry=$this->get_symbol($type,$name))===false)) return false;
+		|| (($entry=$this->getSymbol($type,$name))===false)) return false;
 
 //-- Found
 
@@ -344,7 +344,7 @@ switch($entry['ptype'])
 		$mnt=require($path);
 		error_reporting($errlevel);
 		$pkg=\PHK\_Mgr::instance($mnt);
-		$id=$pkg->automap_id();
+		$id=$pkg->automapID();
 		return Mgr::map($id)->resolve($type,$name,$id);
 		break;
 
@@ -360,12 +360,12 @@ public function symbols()
 {
 /* First, load every remaining slot */
 
-foreach(array_keys($this->slots) as $ns) $this->load_slot($ns);
+foreach(array_keys($this->slots) as $ns) $this->loadSlot($ns);
 
 /* Then, convert every entry to the export format */
 
 $ret=array();
-foreach(array_keys($this->symbols) as $key) $ret[]=$this->export_entry($key);
+foreach(array_keys($this->symbols) as $key) $ret[]=$this->exportEntry($key);
 
 return $ret;
 }
@@ -408,16 +408,16 @@ fclose($fp);
 *
 * Reserved for internal use
 *
-* The first time a given map file is loaded, it is read by \Automap\Map and
+* The first time a given map file is loaded, it is read by Automap\Map and
 * transmitted to the extension. On subsequent requests, it is retrieved from
 * persistent memory. This allows to code complex features in PHP and maintain
-* the code in a single location without loosing in performance.
+* the code in a single location without impacting performance.
 *
 * @param string $version The version of data to transmit (reserved for future use)
 * @return array
 */
 
-public function _pecl_get_map($version)
+public function _peclGetMap($version)
 {
 $st=array();
 foreach($this->symbols() as $s)
@@ -449,16 +449,16 @@ return $st;
 * @return string The resulting path
 */
 
-private static function combine_path($base,$path,$separ=false)
+private static function combinePath($base,$path,$separ=false)
 {
-if (($base=='.') || ($base=='') || self::is_absolute_path($path))
+if (($base=='.') || ($base=='') || self::isAbsolutePath($path))
 	$res=$path;
 elseif (($path=='.') || is_null($path))
 	$res=$base;
 else	//-- Relative path : combine it to base
 	$res=rtrim($base,'/\\').'/'.$path;
 
-return self::trailing_separ($res,$separ);
+return self::trailingSepar($res,$separ);
 }
 
 /**
@@ -469,7 +469,7 @@ return self::trailing_separ($res,$separ);
 * @return bool The result path
 */
 
-private static function trailing_separ($path, $separ)
+private static function trailingSepar($path, $separ)
 {
 $path=rtrim($path,'/\\');
 if ($path=='') return '/';
@@ -484,7 +484,7 @@ return $path;
 * @return bool True if the path is absolute, false if relative
 */
 
-private static function is_absolute_path($path)
+private static function isAbsolutePath($path)
 {
 return ((strpos($path,':')!==false)
 	||(strpos($path,'/')===0)
@@ -502,10 +502,10 @@ return ((strpos($path,':')!==false)
 * @return string The resulting absolute path
 */
 
-private static function mk_absolute_path($path,$separ=false)
+private static function mkAbsolutePath($path,$separ=false)
 {
-if (!self::is_absolute_path($path)) $path=self::combine_path(getcwd(),$path);
-return self::trailing_separ($path,$separ);
+if (!self::isAbsolutePath($path)) $path=self::combinePath(getcwd(),$path);
+return self::trailingSepar($path,$separ);
 }
 
 //---

@@ -59,14 +59,14 @@ foreach($map->symbols() as $s)
 			case \Automap\Mgr::F_SCRIPT:
 				\Phool\Display::trace('Checking script at '.$path);
 				if (!is_file($path)) throw new \Exception($path.': File not found');
-				if (\PHK::file_is_package($path))
+				if (\PHK::fileIsPackage($path))
 					throw new \Exception($path.': File is a PHK package (should be a script)');
 				break;
 
 			case \Automap\Mgr::F_PACKAGE:
 				\Phool\Display::trace('Checking package at '.$path);
 				if (!is_file($path)) throw new \Exception($path.': File not found');
-				if (!\PHK::file_is_package($path))
+				if (!\PHK::fileIsPackage($path))
 					throw new \Exception($path.': File is not a PHK package');
 
 				// Suppress notice msg on multiple HALT_COMPILER definitions
@@ -83,7 +83,7 @@ foreach($map->symbols() as $s)
 		}
 	catch (\Exception $e)
 		{
-		$errors[]=\Automap\Mgr::type_to_string($s['stype']).' '.$s['symbol']
+		$errors[]=\Automap\Mgr::typeToString($s['stype']).' '.$s['symbol']
 			.': '.$e->getMessage();
 		}
 	}

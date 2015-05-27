@@ -50,18 +50,18 @@ interface ParserInterface
 * @throw \Exception if extension cannot be loaded
 */
 
-public function parse_extension($file);
+public function parseExtension($file);
 
 //---------------------------------
 /**
 * Extracts symbols from a PHP script file
 *
-* @param string $path FIle to parse
+* @param string $path File to parse
 * @return array of symbols
 * @throws \Exception on parse error
 */
 
-public function parse_script_file($path);
+public function parseScriptFile($path);
 
 //---------------------------------
 /**
@@ -72,7 +72,7 @@ public function parse_script_file($path);
 * @throws \Exception on parse error
 */
 
-public function parse_script($buf);
+public function parseScript($buf);
 
 //---
 } // End of class

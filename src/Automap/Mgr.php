@@ -92,19 +92,19 @@ private static $type_strings=array(
 
 /** @var array(callables) Registered failure handlers */
 
-private static $failure_handlers=array();
+private static $failureHandlers=array();
 
 /** @var array(callables) Registered success handlers */
 
-private static $success_handlers=array();
+private static $successHandlers=array();
 
 /** @var bool Whether the PHP engine is able to autoload constants */
 
-private static $support_constant_autoload; // 
+private static $supportConstantAutoload; // 
 
 /** @var bool Whether the PHP engine is able to autoload functions */
 
-private static $support_function_autoload; // 
+private static $supportFunctionAutoload; // 
 
 /** @var array(<map ID> => <\Automap\Map>) Array of active maps */
 
@@ -126,10 +126,10 @@ public static function init()
 // Determines if function/constant autoloading is supported
 
 $f=new \ReflectionFunction('function_exists');
-self::$support_function_autoload=($f->getNumberOfParameters()==2);
+self::$supportFunctionAutoload=($f->getNumberOfParameters()==2);
 
 $f=new \ReflectionFunction('defined');
-self::$support_constant_autoload=($f->getNumberOfParameters()==2);
+self::$supportConstantAutoload=($f->getNumberOfParameters()==2);
 }
 
 //=============== User handlers ===============
@@ -148,9 +148,9 @@ self::$support_constant_autoload=($f->getNumberOfParameters()==2);
 * @return null
 */
 
-public static function register_failure_handler($callable)
+public static function registerFailureHandler($callable)
 {
-self::$failure_handlers[]=$callable;
+self::$failureHandlers[]=$callable;
 }
 
 //--------------
@@ -167,9 +167,9 @@ self::$failure_handlers[]=$callable;
 * @return null
 */
 
-private static function call_failure_handlers($type,$name)
+private static function callFailureHandlers($type,$name)
 {
-foreach (self::$failure_handlers as $callable) $callable($type,$name);
+foreach (self::$failureHandlers as $callable) $callable($type,$name);
 }
 
 //--------------
@@ -180,7 +180,7 @@ foreach (self::$failure_handlers as $callable) $callable($type,$name);
 * succeeds.
 *
 * The success handler receives two arguments : An array as returned by the
-* get_symbol() method, and the ID of the map where the symbol was found.
+* getSymbol() method, and the ID of the map where the symbol was found.
 *
 * There is no limit on the number of success handlers that can be registered.
 *
@@ -190,16 +190,16 @@ foreach (self::$failure_handlers as $callable) $callable($type,$name);
 * @return null
 */
 
-public static function register_success_handler($callable)
+public static function registerSuccessHandler($callable)
 {
-self::$success_handlers[]=$callable;
+self::$successHandlers[]=$callable;
 }
 
 //---
 
-private static function call_success_handlers($entry,$id)
+private static function callSuccessHandlers($entry,$id)
 {
-foreach (self::$success_handlers as $callable)
+foreach (self::$successHandlers as $callable)
 	$callable($entry,$id);
 }
 
@@ -224,7 +224,7 @@ return $type.trim($name,'\\');
 
 //---------
 
-public static function type_to_string($type)
+public static function typeToString($type)
 {
 if (!isset(self::$type_strings[$type]))
 	throw new \Exception("$type: Invalid type");
@@ -234,7 +234,7 @@ return self::$type_strings[$type];
 
 //---------
 
-public static function string_to_type($string)
+public static function stringToType($string)
 {
 $type=array_search($string,self::$type_strings,true);
 
@@ -252,14 +252,14 @@ return $type;
 * @return boolean
 */
 
-public static function id_is_active($id)
+public static function isActiveID($id)
 {
 return isset(self::$maps[$id]);
 }
 
 //-----
 /**
-* Same as id_is_active() but throws an exception if the map ID is invalid
+* Same as isActiveID() but throws an exception if the map ID is invalid
 *
 * Returns the map ID so that it can be embedded in a call string.
 *
@@ -270,7 +270,7 @@ return isset(self::$maps[$id]);
 
 private static function validate($id)
 {
-if (!self::id_is_active($id)) throw new \Exception($id.': Invalid map ID');
+if (!self::isActiveID($id)) throw new \Exception($id.': Invalid map ID');
 
 return $id;
 }
@@ -298,7 +298,7 @@ return self::$maps[$id];
 * @return array
 */
 
-public static function active_ids()
+public static function activeIDs()
 {
 return array_keys(self::$maps);
 }
@@ -347,21 +347,21 @@ unset(self::$maps[$id]);
 
 //---------------------------------
 
-public static function using_accelerator()
+public static function usingAccelerator()
 {
 return false;
 }
 
 //-------- Symbol resolution -----------
 
-private static function symbol_is_defined($type,$name)
+private static function symbolIsDefined($type,$name)
 {
 switch($type)
 	{
-	case self::T_CONSTANT:	return (self::$support_constant_autoload ?
+	case self::T_CONSTANT:	return (self::$supportConstantAutoload ?
 		defined($name,false) : defined($name));
 
-	case self::T_FUNCTION:	return (self::$support_function_autoload ?
+	case self::T_FUNCTION:	return (self::$supportFunctionAutoload ?
 		function_exists($name,false) : function_exists($name));
 
 	case self::T_CLASS:		return class_exists($name,false)
@@ -384,7 +384,7 @@ switch($type)
 *   autoloading.
 */
 
-public static function autoload_hook($name,$type=self::T_CLASS)
+public static function autoloadHook($name,$type=self::T_CLASS)
 {
 self::resolve($type,$name,true,false);
 }
@@ -415,51 +415,51 @@ private static function resolve($type,$name,$autoloading=false
 {
 //echo "Resolving $type$name\n";//TRACE
 
-if ((!$autoloading)&&(self::symbol_is_defined($type,$name))) return true;
+if ((!$autoloading)&&(self::symbolIsDefined($type,$name))) return true;
 
 foreach(array_reverse(self::$maps,true) as $id => $map)
 	{
 	if (($entry=$map->resolve($type,$name,$id))===false) continue;
 	//echo "Symbol $name was resolved from ID $id\n";
-	self::call_success_handlers($entry,$id);
+	self::callSuccessHandlers($entry,$id);
 	return true;
 	}
 
 // Failure
 
-self::call_failure_handlers($type,$name);
+self::callFailureHandlers($type,$name);
 if ($exception) throw new \Exception('Automap: Unknown '
-	.self::type_to_string($type).': '.$name);
+	.self::typeToString($type).': '.$name);
 return false;
 }
 
 //---------
 // Methods for explicit resolutions
 
-public static function get_function($name)
+public static function getFunction($name)
 	{ return self::resolve(self::T_FUNCTION,$name,false,false); }
 
-public static function get_constant($name)
+public static function getConstant($name)
 	{ return self::resolve(self::T_CONSTANT,$name,false,false); }
 
-public static function get_class($name)
+public static function getClass($name)
 	{ return self::resolve(self::T_CLASS,$name,false,false); }
 
-public static function get_extension($name)
+public static function getExtension($name)
 	{ return self::resolve(self::T_EXTENSION,$name,false,false); }
 
 //---------
 
-public static function require_function($name)
+public static function requireFunction($name)
 	{ return self::resolve(self::T_FUNCTION,$name,false,true); }
 
-public static function require_constant($name)
+public static function requireConstant($name)
 	{ return self::resolve(self::T_CONSTANT,$name,false,true); }
 
-public static function require_class($name)
+public static function requireClass($name)
 	{ return self::resolve(self::T_CLASS,$name,false,true); }
 
-public static function require_extension($name)
+public static function requireExtension($name)
 	{ return self::resolve(self::T_EXTENSION,$name,false,true); }
 
 //---
@@ -473,7 +473,7 @@ if (!defined('_AUTOMAP_DISABLE_REGISTER'))
 	if (!extension_loaded('spl'))
 		throw new \Exception("Automap requires the SPL extension");
 
-	spl_autoload_register('\Automap\Mgr::autoload_hook');
+	spl_autoload_register('\Automap\Mgr::autoloadHook');
 	}
 
 Mgr::init();
