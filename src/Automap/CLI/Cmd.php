@@ -17,8 +17,7 @@
 //
 //=============================================================================
 /**
-* The main script to build and manage automaps. This script is a wrapper around
-* the Automap_Creator class.
+* The main script of the CLI tool used to build and manage map files.
 *
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
@@ -27,14 +26,18 @@
 */
 //============================================================================
 
-class Automap_Cmd
+namespace Automap\CLI {
+
+if (!class_exists('Automap\CLI\Cmd',false)) 
+{
+class Cmd
 {
 //---------
 
-private static function error_abort($msg,$usage=true)
+private static function errorAbort($msg,$usage=true)
 {
 if ($usage) $msg .= " - Use 'help' command for syntax";
-throw new Exception($msg);
+throw new \Exception($msg);
 }
 
 //---------
@@ -49,7 +52,7 @@ Available commands :
         regular files and/or directories. Directories are scanned recursively
         and every PHP scripts they contain are scanned.
         Options :
-            -a : If the map file exists, add symbols without recreating it
+            -a : Append. If the map file exists, add symbols without recreating it
             -b <base_path> : Specifies a base path. If relative, the reference
                              is the map file directory.
 
@@ -67,20 +70,20 @@ Available commands :
             -o <path> : path of file to create with exported data. Default is
                         to write to stdout.
 
-    - import [-a] [-i <path>]
+  - import [-a] [-i <path>]
         Import symbols from an exported file
         Options :
             -i <path> : path of file where data will be read. Default is to read
                         from stdin.
             -a : If the map file exists, add symbols without recreating it
 
-    - set_option <name> <value>
+  - setOption <name> <value>
         Sets an option in an existing map
 
-    - unset_option <name>
+  - unsetOption <name>
         Unsets an option in an existing map
 
-    - help
+  - help
         Display this message
 
 Global options :
@@ -99,85 +102,85 @@ More information at http://automap.tekwire.net\n\n";
 
 public static function run($args)
 {
-$op=new Automap_Cmd_Options;
-$op->parse_all($args);
+$op=new Options;
+$op->parseAll($args);
 $action=(count($args)) ? array_shift($args) : 'help';
 
 switch($action)
 	{
 	case 'show':
-		$map=Automap::map(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
+		$map=new \Automap\Map($op->option('map_path'));
 		$map->show($op->option('format'));
 		break;
 
 	case 'check':
-		$id=Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD);
-		$c=Automap_Tools::check($id);
-		if ($c) throw new Exception("*** The check procedure found $c error(s) in file $mapfile");
+		$map=new \Automap\Map($op->option('map_path'));
+		$errs=$map->check($id);
+		if (count($errs))
+			{
+			foreach($errs as $err) \Phool\Tools\Display::error($err);
+			throw new \Exception("*** The check procedure found errors in file $mapfile");
+			}
 		break;
 
-	case 'set_option':
-		$mpath=$op->option('map_path');
-		if (count($args)!=2) self::error_abort('set_option requires 2 arguments');
+	case 'setOption':
+		if (count($args)!=2) self::errorAbort('setOption requires 2 arguments');
 		list($name,$value)=$args;
-		if (!is_file($mpath)) throw new Exception("$mpath: File not found");
-		$map=new Automap_Creator();
-		$map->read_map_file($mpath);
-		$map->set_option($name,$value);
-		$map->save($mpath);
+		$map=new \Automap\Build\Creator();
+		$map->readMapFile($op->option('map_path'));
+		$map->setOption($name,$value);
+		$map->save($op->option('map_path'));
 		break;
 
-	case 'unset_option':
-		$mpath=$op->option('map_path');
-		if (count($args)!=1) self::error_abort('unset_option requires 1 argument');
+	case 'unsetOption':
+		if (count($args)!=1) self::errorAbort('unsetOption requires 1 argument');
 		$name=array_shift($args);
-		if (!is_file($mpath)) throw new Exception("$mpath: File not found");
-		$map=new Automap_Creator();
-		$map->read_map_file($mpath);
-		$map->unset_option($name);
-		$map->save($mpath);
+		$map=new \Automap\Build\Creator();
+		$map->readMapFile($op->option('map_path'));
+		$map->unsetOption($name);
+		$map->save($op->option('map_path'));
 		break;
 
 	case 'register_extensions':
 		//-- Must be executed with :
-		//-- php -n -d <Extension_dir> Automap_Builder.php register_extensions
+		//-- php -n -d <Extension_dir> automap.phk register_extensions
 		//-- in order to ignore extension preloading directives in php.ini
 		//-- (if an extension is already loaded, we cannot determine which file
 		//-- it came from). The '-d' flag is mandatory as long as PHP cannot
 		//-- dl() outside of 'extension_dir'.
 
-		$map=new Automap_Creator();
+		$map=new \Automap\Build\Creator();
 		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->read_map_file($op->option('map_path'));
-		$map->register_extension_dir();
+			$map->readMapFile($op->option('map_path'));
+		$map->registerExtensionDir();
 		$map->save($op->option('map_path'));
 		break;
 
 	case 'register':
-		$map=new Automap_Creator();
+		$map=new \Automap\Build\Creator();
 		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->read_map_file($op->option('map_path'));
-		$abs_map_dir=PHO_File::mk_absolute_path(dirname($op->option('map_path')));
+			$map->readMapFile($op->option('map_path'));
+		$abs_map_dir=\Phool\File::mkAbsolutePath(dirname($op->option('map_path')));
 		if (!is_null($op->option('base_path')))
-			$map->set_option('base_path',$op->option('base_path'));
-		$abs_base=PHO_File::combine_path($abs_map_dir,$map->option('base_path'));
+			$map->setOption('base_path',$op->option('base_path'));
+		$abs_base=\Phool\File::combinePath($abs_map_dir,$map->option('base_path'));
 		foreach($args as $rpath)
 			{
-			$abs_path=PHO_File::combine_path($abs_base,$rpath);
-			$map->register_path($abs_path,$rpath);
+			$abs_path=\Phool\File::combinePath($abs_base,$rpath);
+			$map->registerPath($abs_path,$rpath);
 			}
 		$map->save($op->option('map_path'));
 		break;
 
 	case 'export':
-		$map=Automap::map(Automap::load($op->option('map_path'),Automap::NO_AUTOLOAD));
-		Automap_Tools::export($map,$op->option('output'));
+		$map=new \Automap\Map($op->option('map_path'));
+		$map->export($op->option('output'));
 		break;
 
 	case 'import':
-		$map=new Automap_Creator();
+		$map=new \Automap\Build\Creator();
 		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->read_map_file($op->option('map_path'));
+			$map->readMapFile($op->option('map_path'));
 		$map->import($op->option('input'));
 		$map->save($op->option('map_path'));
 		break;
@@ -187,10 +190,15 @@ switch($action)
 		break;
 
 	default:
-		self::error_abort("Unknown action: '$action'");
+		self::errorAbort("Unknown action: '$action'");
 	}
 }
 
-//============================================================================
+//---
 } // End of class
+//===========================================================================
+} // End of class_exists
+//===========================================================================
+} // End of namespace
+//===========================================================================
 ?>

@@ -1,30 +1,31 @@
 #==============================================================================
+# As this Makefile is included in the distrib, it cannot include make templates
 
 TARGETS = auto1.map auto2.map
 EXTRA_CLEAN = php.log
 
-include ../make.vars
-include ../make.common
+PHP = php
 
 #-----------------------------------------------------------------------------
 
 .PHONY: all clean test mem_test
 
-all: base
+all: test
 
-clean: clean_base
+clean:
+	/bin/rm -rf $(TARGETS) $(EXTRA_CLEAN)
 
 auto1.map :
-	$(PHPCMD) ../automap.phk register -m auto1.map src1
+	$(PHP) ../automap.phk register -m auto1.map src1
 	
 auto2.map :
-	$(PHPCMD) ../automap.phk register -m auto2.map src2
+	$(PHP) ../automap.phk register -m auto2.map src2
 
-test: base
-	$(PHPCMD) test.php
+test: $(TARGETS)
+	$(PHP) test.php
 
-mem_test: base
-	valgrind --tool=memcheck --log-file=php.log --leak-check=full \
+mem_test: $(TARGETS)
+	USE_ZEND_ALLOC=0 valgrind --tool=memcheck --log-file=php.log --leak-check=full \
 		--track-origins=yes $(PHP) test.php
 
 #-----------------------------------------------------------------------------

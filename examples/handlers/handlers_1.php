@@ -12,23 +12,23 @@ require(__DIR__.'/../../automap.phk'); // Load Automap runtime
 
 function failure($type,$symbol)
 {
-echo 'Automap could not find a '.Automap::type_to_string($type)
+echo 'Automap could not find a '.\Automap\Mgr::typeToString($type)
 	.' named \''.$symbol."'\n";
 }
 
 //---------------------------
 // This is a success handler
 
-function success($entry,$map)
+function success($entry,$id)
 {
-$stype=$entry['stype'];
+$map=\Automap\Mgr::map($id);
 
 echo "Automap loaded "
-	.Automap::type_to_string($stype)
+	.\Automap\Mgr::typeToString($entry['stype'])
 	.' \''
 	.$entry['symbol']
 	.'\' from '
-	.Automap::type_to_string($entry['ptype'])
+	.\Automap\Mgr::typeToString($entry['ptype'])
 	.' '
 	.$entry['path']
 	."\n";
@@ -38,16 +38,16 @@ echo 'Symbol was found in this map: '.$map->path()."\n";
 //---------------------------
 // Register handlers
 
-Automap::register_failure_handler('failure');
-Automap::register_success_handler('success');
+\Automap\Mgr::registerFailureHandler('failure');
+\Automap\Mgr::registerSuccessHandler('success');
 
-$id=Automap::load(__DIR__.'/../hello/auto.map');
+$id=\Automap\Mgr::load(__DIR__.'/../hello/auto.map');
 
 //-------
 
 function check_loaded($id)
 {
-echo "Map ID $id is loaded ? ".(Automap::id_is_active($id) ? 'yes' : 'no')."\n";
+echo "Map ID $id is loaded ? ".(\Automap\Mgr::isActiveID($id) ? 'yes' : 'no')."\n";
 }
 
 //-------
@@ -62,9 +62,9 @@ check_loaded($id);	// Yes
 
 check_loaded(1234);	// No
 
-$map=Automap::instance($id);
+$map=\Automap\Mgr::map($id);
 
-Automap::unload($id);
+\Automap\Mgr::unload($id);
 
 try
 	{

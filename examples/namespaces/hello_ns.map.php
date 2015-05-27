@@ -4,7 +4,7 @@ namespace Example;
 
 require(__DIR__.'/../../automap.phk');
 
-\Automap::load('auto.map');
+\Automap\Mgr::load('auto.map');
 
 //---------------------------
 
