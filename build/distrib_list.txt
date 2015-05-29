@@ -5,5 +5,4 @@ examples
 test
 README.md
 doc/api.phk
-doc/api.pdf
 doc/xref.phk
