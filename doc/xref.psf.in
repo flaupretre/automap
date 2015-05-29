@@ -1,7 +1,7 @@
 
 #-- Documentation files
 
-add --compress gzip --directory $(SOURCE) .
+add --compression gzip --directory $(SOURCE) .
 
 #-- The license files
 
