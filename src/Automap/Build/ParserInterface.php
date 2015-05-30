@@ -21,18 +21,17 @@
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//============================================================================
+*///==========================================================================
 
 //===========================================================================
 /**
 * Parser interface
 *
-* A parser object used to create a map must implement this interface
+* A parser class used to create a map must implement this interface
 *
-* @package Automap
-*/
-//===========================================================================
+* Included in the PHK PHP runtime: No
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap\Build {
 
@@ -40,7 +39,6 @@ if (!interface_exists('Automap\Build\ParserInterface',false))
 {
 interface ParserInterface
 {
-
 //---------------------------------
 /**
 * Extracts symbols from an extension

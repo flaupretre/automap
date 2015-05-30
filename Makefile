@@ -52,7 +52,7 @@ clean_doc:
 # As we copy the whole examples and test subdirs into the distrib, we must
 # clean them first.
 
-distrib:  $(DISTRIB)
+distrib: $(DISTRIB)
 
 $(DISTRIB): base doc clean_test clean_examples
 	BASE=$(PWD) TMP_DIR=$(TMP_DIR) PRODUCT=$(PRODUCT) \

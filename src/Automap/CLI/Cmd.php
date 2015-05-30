@@ -17,14 +17,20 @@
 //
 //=============================================================================
 /**
-* The main script of the CLI tool used to build and manage map files.
-*
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//============================================================================
+*///==========================================================================
+
+//=============================================================================
+/**
+* The main script of the CLI Automap manager tool.
+*
+* API status: Private
+* Included in the PHK PHP runtime: No
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap\CLI {
 
@@ -118,9 +124,10 @@ switch($action)
 		$errs=$map->check($id);
 		if (count($errs))
 			{
-			foreach($errs as $err) \Phool\Tools\Display::error($err);
+			foreach($errs as $err) \Phool\Display::error($err);
 			throw new \Exception("*** The check procedure found errors in file $mapfile");
 			}
+		\Phool\Display::info('Check OK');
 		break;
 
 	case 'setOption':

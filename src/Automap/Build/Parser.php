@@ -21,8 +21,7 @@
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//============================================================================
+*///==========================================================================
 
 namespace Automap\Build {
 
@@ -42,11 +41,13 @@ if (!defined('T_TRAIT'))	define('T_TRAIT',-5);
 /**
 * The Automap parser
 *
-* This class detects and extracts symbols from PHP scripts and extensions
+* This class analyzes PHP scripts, packages, or extensions to extract the
+* symbols they define
 *
-* @package Automap
-*/
-//===========================================================================
+* API status: Public
+* Included in the PHK PHP runtime: No
+* Implemented in the extension: No
+*///==========================================================================
 
 if (!class_exists('Automap\Build\Parser',false)) 
 {

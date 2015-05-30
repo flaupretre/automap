@@ -17,17 +17,23 @@
 //
 //=============================================================================
 /**
-* This class contains the methods we want to include in the PHK PHP runtime, but
-* not in the Automap PECL extension.
-*
-* It is included in the PHK PHP runtime. So, it may reference the PHK code
-*
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//===========================================================================
+*///==========================================================================
+
+//=============================================================================
+/**
+* This class contains the methods we include in the PHK PHP runtime, but
+* not in the PECL extension.
+*
+* As it is included in the PHK runtime, the code may reference PHK, but not Phool.
+*
+* API status: Public
+* Included in the PHK PHP runtime: Yes
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap\Tools {
 

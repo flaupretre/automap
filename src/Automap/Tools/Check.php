@@ -17,15 +17,22 @@
 //
 //=============================================================================
 /**
-* This class contains auxiliary runtime features, not included in the
-* PECL extension nor in the PHK runtime. It may call PHK methods.
-*
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//===========================================================================
+*///==========================================================================
+
+//=============================================================================
+/**
+* This class checks the integrity of a map.
+*
+* As it is included in the PHK runtime, the code may reference PHK, but not Phool.
+*
+* API status: Private
+* Included in the PHK PHP runtime: Yes
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap\Tools {
 
@@ -57,14 +64,14 @@ foreach($map->symbols() as $s)
 				break;
 
 			case \Automap\Mgr::F_SCRIPT:
-				\Phool\Display::trace('Checking script at '.$path);
+				//echo "Checking script at $path\n";
 				if (!is_file($path)) throw new \Exception($path.': File not found');
 				if (\PHK::fileIsPackage($path))
 					throw new \Exception($path.': File is a PHK package (should be a script)');
 				break;
 
 			case \Automap\Mgr::F_PACKAGE:
-				\Phool\Display::trace('Checking package at '.$path);
+				//echo "Checking package at $path\n";
 				if (!is_file($path)) throw new \Exception($path.': File not found');
 				if (!\PHK::fileIsPackage($path))
 					throw new \Exception($path.': File is not a PHK package');

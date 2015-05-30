@@ -17,22 +17,26 @@
 //
 //=============================================================================
 /**
+* @copyright Francois Laupretre <automap@tekwire.net>
+* @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
+* @category Automap
+* @package Automap
+*///==========================================================================
+
+//=============================================================================
+/**
 * A map instance (created from an existing map file)
 *
 * When the PECL extension is not present, this class is instantiated when the
 * map is loaded, and it is used by the autoloader.
 *
-* When the extension is present, this class is instantiated only when needed
-* and is not used by the autoloader.
+* When the extension is present, this class is instantiated only when explicitely
+* referenced and is not used by the autoloader.
 *
-* This file is included in the PHK PHP runtime.
-*
-* @copyright Francois Laupretre <automap@tekwire.net>
-* @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
-* @category Automap
-* @package Automap
-*/
-//===========================================================================
+* API status: Public
+* Included in the PHK PHP runtime: Yes
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap {
 

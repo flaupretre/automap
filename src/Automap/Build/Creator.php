@@ -16,19 +16,26 @@
 //   limitations under the License.
 //
 //=============================================================================
-
-//=============================================================================
 /**
-* The \Automap\Creator class
-*
-* This class creates map files
-*
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//============================================================================
+*///==========================================================================
+
+//=============================================================================
+/**
+* This class creates a map file
+*
+* Usage:
+*	$map=new \Automap\Build\Creator();
+*	...[populate using the different methods]...
+*	$map->save(<path>);
+*
+* API status: Public
+* Included in the PHK PHP runtime: No
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap\Build {
 
