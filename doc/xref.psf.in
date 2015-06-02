@@ -14,9 +14,9 @@ name              : Automap Cross reference
 version           : '@SOFTWARE_VERSION@'
 release           : '@SOFTWARE_RELEASE@'
 copyright         : (c) F. Laupretre
-author            : F. Laupretre <mailto:francois@tekwire.net>
+author            : Francois Laupretre <mailto:francois@tekwire.net>
 url               : http://automap.tekwire.net
-packager          : F. Laupretre <mailto:francois@tekwire.net>
+packager          : Francois Laupretre <mailto:francois@tekwire.net>
 web_run_script    : /index.html
 license_prefix    : /etc/license
 web_access        : /  #-- Open access

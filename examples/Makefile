@@ -3,10 +3,11 @@
 
 SUBDIRS = handlers hello namespaces
 
-all: examples
-
 include ../make.vars
 include ../make.common
+
+all: base
+base: examples
 
 .PHONY: all examples clean
 

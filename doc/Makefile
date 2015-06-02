@@ -1,14 +1,8 @@
 
 SOURCE_DIR = ../src
 BUILD_DIR = ../build
-
-CLASSES_DIR = ../src
-
-
 TARGETS = api.phk xref.phk
 EXTRA_CLEAN = api.psf xref.psf
-
-#------
 
 include ../make.vars
 include ../make.common
@@ -22,7 +16,6 @@ all: base
 clean: clean_base
 
 #------ API Documentation
-#-- Restrict API documentation to the public API
 
 api.phk: api.psf
 	/bin/rm -rf $(TMP_DIR)

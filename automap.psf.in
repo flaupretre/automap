@@ -22,4 +22,3 @@ url            : http://automap.tekwire.net
 packager       : F. Laupretre <mailto:phk@tekwire.net>
 cli_run_script : /scripts/main.php
 license_prefix : /etc/license
-plain_prolog   : true
