@@ -5,13 +5,11 @@ PRODUCT=automap
 
 SOFTWARE_VERSION = 3.0.0
 
-SOFTWARE_RELEASE = b1
+SOFTWARE_RELEASE = 1
 
 #--------------
 
 PHPCMD = $(VALGRIND) $(PHP)
-
-PHKMGR = $(PHPCMD) $(PHKMGR_PATH)
 
 PHK_BUILD = $(PHKMGR) build
 
@@ -45,10 +43,9 @@ clean_base:
 
 #--- How to transform the package into a shell executable
 
-exe: $(PRODUCT)
-
-$(PRODUCT): $(PRODUCT).phk
-	cp $(PRODUCT).phk $(PRODUCT)
+exe: $(PRODUCT).phk
+	/bin/rm $(PRODUCT)
+	mv $(PRODUCT).phk $(PRODUCT)
 	chmod +x $(PRODUCT)
 	$(PHPCMD) $(PRODUCT) @set_interp '/bin/env php'
 

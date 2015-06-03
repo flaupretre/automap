@@ -13,7 +13,7 @@ add -C .. etc
 name              : Automap Cross reference
 version           : '@SOFTWARE_VERSION@'
 release           : '@SOFTWARE_RELEASE@'
-copyright         : (c) F. Laupretre
+copyright         : (c) Francois Laupretre
 author            : Francois Laupretre <mailto:francois@tekwire.net>
 url               : http://automap.tekwire.net
 packager          : Francois Laupretre <mailto:francois@tekwire.net>

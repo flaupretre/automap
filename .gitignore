@@ -2,3 +2,4 @@
 *.map
 automap.psf
 test/php.log
+doc/*.psf
