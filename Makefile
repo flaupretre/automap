@@ -62,4 +62,13 @@ $(DISTRIB): base doc clean_test clean_examples
 clean_distrib:
 	/bin/rm -f $(DISTRIB)
 
+#--- Sync subtrees - Dev private
+
+SYNC = rsync -av --del --exclude external --delete-excluded
+
+sync: sync_phool
+
+sync_phool:
+	$(SYNC) ../../../phool/public external/phool
+
 #-----------------------------------------------------------------------------

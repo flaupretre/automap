@@ -22,12 +22,12 @@ namespace Automap {
 // main.php includes every class scripts. This way, it can be used out of phk
 
 // <PHK:ignore>
-require(dirname(__FILE__).'/../submodules/phool/src/Phool/Display.php');
-require(dirname(__FILE__).'/../submodules/phool/src/Phool/File.php');
-require(dirname(__FILE__).'/../submodules/phool/src/Phool/Options/Getopt.php');
-require(dirname(__FILE__).'/../submodules/phool/src/Phool/Options/Base.php');
-require(dirname(__FILE__).'/../submodules/phool/src/Phool/Util.php');
-require(dirname(__FILE__).'/../submodules/phool/src/Phool/Debug/Counter.php');
+require(dirname(__FILE__).'/../external/phool/src/Phool/Display.php');
+require(dirname(__FILE__).'/../external/phool/src/Phool/File.php');
+require(dirname(__FILE__).'/../external/phool/src/Phool/Options/Getopt.php');
+require(dirname(__FILE__).'/../external/phool/src/Phool/Options/Base.php');
+require(dirname(__FILE__).'/../external/phool/src/Phool/Util.php');
+require(dirname(__FILE__).'/../external/phool/src/Phool/Debug/Counter.php');
 require(dirname(__FILE__).'/../src/Automap/Mgr.php');
 require(dirname(__FILE__).'/../src/Automap/Map.php');
 require(dirname(__FILE__).'/../src/Automap/CLI/Cmd.php');
