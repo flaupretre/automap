@@ -42,7 +42,7 @@ clean_examples:
 
 #--- Documentation
 
-doc: base
+doc:
 	$(MAKE) -C doc
 
 clean_doc:
