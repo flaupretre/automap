@@ -42,7 +42,7 @@ clean_examples:
 
 #--- Documentation
 
-doc: base
+doc:
 	$(MAKE) -C doc
 
 clean_doc:
@@ -52,7 +52,7 @@ clean_doc:
 # As we copy the whole examples and test subdirs into the distrib, we must
 # clean them first.
 
-distrib:  $(DISTRIB)
+distrib: $(DISTRIB)
 
 $(DISTRIB): base doc clean_test clean_examples
 	BASE=$(PWD) TMP_DIR=$(TMP_DIR) PRODUCT=$(PRODUCT) \
@@ -61,5 +61,14 @@ $(DISTRIB): base doc clean_test clean_examples
 
 clean_distrib:
 	/bin/rm -f $(DISTRIB)
+
+#--- Sync subtrees - Dev private
+
+SYNC = rsync -av --del --exclude external --delete-excluded
+
+sync: sync_phool
+
+sync_phool:
+	$(SYNC) ../../../phool/public external/phool
 
 #-----------------------------------------------------------------------------

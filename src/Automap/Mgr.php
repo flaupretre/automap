@@ -17,31 +17,24 @@
 //
 //=============================================================================
 /**
-* The Automap (PHP) manager.
-*
-* This code is never used when the PHK PECL extension is present.
-*
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//===========================================================================
+*///==========================================================================
 
-//===========================================================================
+//=============================================================================
 /**
-* This class autoloads PHP scripts and extensions from an extension,
-* constant, class, or function name.
+* The Automap (PHP) manager.
 *
 * Methods use map IDs. A map ID is a non null positive number, uniquely
 * identifying a loaded map.
 *
-* This is a static-only class. It is also implemented in the PECL extension
-* and included in the PHK PHP runtime.
-*
-* @package Automap
-*/
-//===========================================================================
+* Static-only
+* API status: Public
+* Included in the PHK PHP runtime: Yes
+* Implemented in the extension: Yes
+*///==========================================================================
 
 namespace Automap {
 

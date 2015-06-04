@@ -4,6 +4,7 @@ automap.phk
 examples
 test
 README.md
+make.vars
+make.common
 doc/api.phk
-doc/api.pdf
 doc/xref.phk

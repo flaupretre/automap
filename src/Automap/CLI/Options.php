@@ -17,14 +17,20 @@
 //
 //=============================================================================
 /**
-* This class manages options for Automap\CLI\Cmd
-*
 * @copyright Francois Laupretre <automap@tekwire.net>
 * @license http://www.apache.org/licenses/LICENSE-2.0 Apache License, V 2.0
 * @category Automap
 * @package Automap
-*/
-//============================================================================
+*///==========================================================================
+
+//=============================================================================
+/**
+* This class manages command line options for Automap\CLI\Cmd
+*
+* API status: Private
+* Included in the PHK PHP runtime: No
+* Implemented in the extension: No
+*///==========================================================================
 
 namespace Automap\CLI {
 

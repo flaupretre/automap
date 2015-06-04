@@ -1,14 +1,8 @@
 
 SOURCE_DIR = ../src
 BUILD_DIR = ../build
-
-CLASSES_DIR = ../src
-
-
-TARGETS = api.phk api.pdf xref.phk
+TARGETS = api.phk xref.phk
 EXTRA_CLEAN = api.psf xref.psf
-
-#------
 
 include ../make.vars
 include ../make.common
@@ -22,24 +16,12 @@ all: base
 clean: clean_base
 
 #------ API Documentation
-#-- Restrict API documentation to the public API
 
 api.phk: api.psf
 	/bin/rm -rf $(TMP_DIR)
 	mkdir -p $(TMP_DIR)
-	$(PHPDOC) -o HTML:frames:DOM/earthli -ti "$(PRODUCT) API" \
-		-d $(SOURCE_DIR) -t $(TMP_DIR)
+	$(PHPDOC) -q --title "$(PRODUCT)" -d $(SOURCE_DIR) -t $(TMP_DIR)
 	$(PHK_BUILD) $@ -d SOURCE=$(TMP_DIR)
-	/bin/rm -rf $(TMP_DIR)
-
-#-- PDF
-
-api.pdf: api.psf
-	/bin/rm -rf $(TMP_DIR)
-	mkdir -p $(TMP_DIR)
-	$(PHPDOC) -o PDF:default:default -ti "$(PRODUCT) API" \
-		-d $(SOURCE_DIR) -t $(TMP_DIR)
-	mv $(TMP_DIR)/documentation.pdf $@
 	/bin/rm -rf $(TMP_DIR)
 
 #-- Cross Reference

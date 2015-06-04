@@ -1,19 +1,19 @@
 #==============================================================================
-# As this Makefile is included in the distrib, it cannot include make templates
 
 TARGETS = auto1.map auto2.map
 EXTRA_CLEAN = php.log
 
-PHP = php
+include ../make.vars
+include ../make.common
 
 #-----------------------------------------------------------------------------
 
 .PHONY: all clean test mem_test
 
-all: test
+all: base
+base: test
 
-clean:
-	/bin/rm -rf $(TARGETS) $(EXTRA_CLEAN)
+clean: clean_base
 
 auto1.map :
 	$(PHP) ../automap.phk register -m auto1.map src1

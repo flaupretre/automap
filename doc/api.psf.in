@@ -1,7 +1,7 @@
 
 #-- Documentation files
 
-add --strip --compress gzip --directory $(SOURCE) .
+add --strip --compression gzip --directory $(SOURCE) .
 
 #-- The license files
 
@@ -14,10 +14,10 @@ name              : Automap API reference
 version           : '@SOFTWARE_VERSION@'
 release           : '@SOFTWARE_RELEASE@'
 license           : Apache License, Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>
-copyright         : (c) F. Laupretre
-author            : F. Laupretre <mailto:automap@tekwire.net>
+copyright         : (c) Francois Laupretre
+author            : Francois Laupretre <mailto:automap@tekwire.net>
 url               : http://automap.tekwire.net
-packager          : F. Laupretre <mailto:automap@tekwire.net>
+packager          : Francois Laupretre <mailto:automap@tekwire.net>
 web_run_script    : /index.html
 license_prefix    : /etc/license
 web_access        : /  #-- Open access
