@@ -48,9 +48,11 @@ const MIN_RUNTIME_VERSION='3.0.0'; // Minimum version of runtime able to underst
 
 //---------
 
-private $symbols=array();	// array($key => array('T' => <symbol type>
-							// , 'n' => <case-sensitive symbol name>
-							// , 't' => <target type>, 'p' => <target path>))
+private $symbols;	// array($key => array('T' => <symbol type>
+					// , 'n' => <case-sensitive symbol name>
+					// , 't' => <target type>, 'p' => <target path>))
+private $tsymbols; // array(composite target => array(symbol keys))
+
 private $options=array();
 
 private $php_file_ext=array('php','inc','hh');
@@ -61,7 +63,16 @@ private $parser; // Must implement \Automap\Build\ParserInterface
 
 public function __construct($parser=null)
 {
+$this->resetSymbolTable();
 $this->setParser($parser);
+}
+
+//---------
+
+public function resetSymbolTable()
+{
+$this->symbols=array();
+$this->tsymbols=array();
 }
 
 //---------
@@ -163,7 +174,13 @@ if (isset($this->symbols[$key]))
 			.' '.$va['p']."\n";
 		}
 	}
-else $this->symbols[$key]=$va;
+else
+	{
+	$this->symbols[$key]=$va;
+	$target=$va['t'].$va['p'];
+	if (!array_key_exists($target,$this->tsymbols)) $this->tsymbols[$target]=array();
+	$this->tsymbols[$target][]=$key;
+	}
 
 \Phool\Display::debug('Symbol count: '.count($this->symbols)
 	.' - Mem used: '.(memory_get_usage(true)/(1024*1024)).' Mb');//TRACE
@@ -208,17 +225,17 @@ $this->addTSEntry($stype,$sname,$va);
 
 private function unregisterTarget($va)
 {
-$type=$va['t'];
-$path=$va['p'];
-\Phool\Display::debug("Unregistering path (type=$type, path=$path)");
+$target=$va['t'].$va['p'];
+\Phool\Display::debug("Unregistering target ($target)");
 
-foreach(array_keys($this->symbols) as $key)
+if (array_key_exists($target,$this->tsymbols))
 	{
-	if (($this->symbols[$key]['t']===$type)&&($this->symbols[$key]['p']===$path))
+	foreach($this->tsymbols[$target] as $key)
 		{
 		\Phool\Display::debug("Removing $key from symbol table");
 		unset($this->symbols[$key]);
 		}
+	unset($this->tsymbols[$target]);
 	}
 }
 
@@ -412,6 +429,7 @@ switch($type=filetype($fpath))
 }
 
 //---------
+// Read a map file, replacing current symbol table, if any
 
 public function readMapFile($fpath)
 {
@@ -419,7 +437,7 @@ public function readMapFile($fpath)
 
 $map=new \Automap\Map($fpath);
 $this->options=$map->options();
-$this->symbols=array();
+$this->resetSymbolTable();
 $this->mergeMapSymbols($map);
 }
 
@@ -448,7 +466,7 @@ public function mergeMapSymbols($map,$rpath='.')
 {
 foreach($map->symbols() as $sym)
 	{
-	$va=self::mkVarray($sym['ptype'],\Phool\File::combinePath($rpath,$sym['rpath']);
+	$va=self::mkVarray($sym['ptype'],\Phool\File::combinePath($rpath,$sym['rpath']));
 	$this->addTSEntry($sym['stype'],$sym['symbol'],$va);
 	}
 }
