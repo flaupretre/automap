@@ -212,6 +212,8 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 /**
 * Register explicit declarations
 *
+* A file may disable indexing and explicitely declare symbols.
+*
 * Format:
 *	<double-slash> <Automap>:declare <type> <value>
 *	<double-slash> <Automap>:ignore <type> <value>
@@ -223,6 +225,7 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 
 private function parseAutomapDirectives($buf,&$skip_blocks)
 {
+$ret=true;
 $a=null;
 if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 	{
@@ -231,7 +234,7 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 		switch ($cmd=$match[1])
 			{
 			case 'ignore-file':
-				return false;
+				$ret=false;
 
 			case 'skip-blocks':
 				$skip_blocks=true;
@@ -255,7 +258,7 @@ if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
 			}
 		}
 	}
-return true;
+return $ret;
 }
 
 //---------------------------------
@@ -298,17 +301,18 @@ $buf=str_replace("\r",'',$buf);
 
 $skip_blocks=false;
 
-if (!$this->parseAutomapDirectives($buf,$skip_blocks)) return array();
-
-if (function_exists('\Automap\Ext\parseTokens')) 
-	{ // If PECL function is available
-	$a=\Automap\Ext\parseTokens($buf,$skip_blocks);
-	//var_dump($a);//TRACE
-	foreach($a as $k) $this->addSymbol($k{0},substr($k,1));
-	}
-else
+if ($this->parseAutomapDirectives($buf,$skip_blocks))
 	{
-	$this->parseTokens($buf,$skip_blocks);
+	if (function_exists('\Automap\Ext\parseTokens')) 
+		{ // If PECL function is available
+		$a=\Automap\Ext\parseTokens($buf,$skip_blocks);
+		//var_dump($a);//TRACE
+		foreach($a as $k) $this->addSymbol($k{0},substr($k,1));
+		}
+	else
+		{
+		$this->parseTokens($buf,$skip_blocks);
+		}
 	}
 
 return $this->cleanup();
