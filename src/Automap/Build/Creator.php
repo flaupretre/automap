@@ -164,6 +164,9 @@ if (isset($this->symbols[$key]))
 		}
 	}
 else $this->symbols[$key]=$va;
+
+\Phool\Display::debug('Symbol count: '.count($this->symbols)
+	.' - Mem used: '.(memory_get_usage(true)/(1024*1024)).' Mb');//TRACE
 }
 
 //---------
@@ -443,10 +446,10 @@ $this->mergeMapSymbols($map,$rpath);
 
 public function mergeMapSymbols($map,$rpath='.')
 {
-foreach($map->symbols() as $va)
+foreach($map->symbols() as $sym)
 	{
-	$va['rpath']=\Phool\File::combinePath($rpath,$va['rpath']);
-	$this->addEntry($va);
+	$va=self::mkVarray($sym['ptype'],\Phool\File::combinePath($rpath,$sym['rpath']);
+	$this->addTSEntry($sym['stype'],$sym['symbol'],$va);
 	}
 }
 
