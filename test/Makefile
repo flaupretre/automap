@@ -16,16 +16,16 @@ base: test
 clean: clean_base
 
 auto1.map :
-	$(PHP) ../automap.phk register -m auto1.map src1
+	$(PHP) -d phk.enable_cli=1 ../automap.phk register -m auto1.map src1
 	
 auto2.map :
-	$(PHP) ../automap.phk register -m auto2.map src2
+	$(PHP) -d phk.enable_cli=1 ../automap.phk register -m auto2.map src2
 
 test: $(TARGETS)
-	$(PHP) test.php
+	$(PHP) -d phk.enable_cli=1 test.php
 
 mem_test: $(TARGETS)
 	USE_ZEND_ALLOC=0 valgrind --tool=memcheck --log-file=php.log --leak-check=full \
-		--track-origins=yes $(PHP) test.php
+		--track-origins=yes $(PHP) -d phk.enable_cli=1 test.php
 
 #-----------------------------------------------------------------------------
