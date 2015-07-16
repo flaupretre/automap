@@ -46,32 +46,24 @@ class Map
 {
 /** Runtime API version */
 
-const VERSION='3.0.0';
+const VERSION='3.1.0';
 
 /** We cannot load maps older than this version */
  
-const MIN_MAP_VERSION='3.0.0';
+const MIN_MAP_VERSION='3.1.0';
 
 /** Map files start with this string */
 
-const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files (offset 0)
+const MAGIC="AUTOMAP  M\024\x8\6\3";// Magic value for map files
 
 //--------------------------
 /** The absolute path of the map file */
 
 private $path;			
 
-/** @var array(<key> => <target>)	The symbol table (filled from slots) */
+/** @var array(<key> => <target>)	The symbol table */
 
 private $symbols;
-
-/** @var array(<ns> => <slot data>)	The symbols not loaded in the symbol table yet */
-
-private $slots;
-
-/** @var integer Symbol count of this map */
-
-private $symcount;
 
 /** @var array(<name> => <value>)	The map options */
 
@@ -110,74 +102,55 @@ $this->flags=$flags;
 
 try
 {
-//-- Get file content
-
-if (($buf=@file_get_contents($this->path))===false)
-	throw new \Exception('Cannot read map file');
-$bufsize=strlen($buf);
-if ($bufsize<70) throw new \Exception("Short file (size=$bufsize)");
-//echo '<p>Map file read time: '.((microtime(true)-$start_time)*1000);//TRACE
+$buf=self::getMapHeader($this->path);
 
 //-- Check magic
 
-if (substr($buf,0,14)!=self::MAGIC) throw new \Exception('Bad Magic');
+if (substr($buf,9,14)!=self::MAGIC) throw new \Exception('Bad Magic');
 
 //-- Check min runtime version required by map
 
-$this->minVersion=trim(substr($buf,14,12));	
+$this->minVersion=trim(substr($buf,24,12));	
 if (version_compare($this->minVersion,self::VERSION) > 0)
 	throw new \Exception($this->path.': Cannot understand this map.'.
 		' Requires at least Automap version '.$this->minVersion);
 
 //-- Check if the map format is not too old
 
-$this->version=trim(substr($buf,26,12));
+$this->version=trim(substr($buf,37,12));
 if (strlen($this->version)==0)
-	throw new \Exception('Invalid empty map version');
+	throw new \Exception('Invalid (empty) map version');
 if (version_compare($this->version,self::MIN_MAP_VERSION) < 0)
 	throw new \Exception('Cannot understand this map. Format too old.');
-$map_major_version=$this->version{0};
 
 //-- Check file size
 
-if (strlen($buf)!=($sz=(int)substr($buf,38,8)))
-	throw new \Exception('Invalid file size. '.$sz.' should be '.strlen($buf));
+$sz=(int)substr($buf,62,8);
+if ($sz != filesize($this->path)) {
+	throw new \Exception('Invalid file size ('
+		.filesize($this->path)."), should be $sz");
+}
 
 //-- Check CRC
 
 if ($flags & Mgr::CRC_CHECK)
 	{
-	$crc=substr($buf,46,8);
-	$buf=substr_replace($buf,'00000000',46,8);
-	if ($crc!==hash('adler32',$buf)) throw new \Exception('CRC error');
+	$crc=substr($buf,71,8);
+	if ($crc!==hash('adler32',substr_replace(file_get_contents($this->path),'00000000',71,8)))
+		throw new \Exception('CRC error');
 	}
-
-//-- Symbol count
-
-$this->symcount=(int)substr($buf,54,8);
 
 //-- Read data
 
 //$start=microtime(true);//TRACE
-$dsize=(int)substr($buf,62,8);
-if (($buf=unserialize(substr($buf,70,$dsize)))===false)
-	throw new \Exception('Cannot unserialize data from map file');
-if (!is_array($buf))
-	throw new \Exception('Map file should contain an array');
-if (!array_key_exists('options',$buf)) throw new \Exception('No options array');
-if (!is_array($this->options=$buf['options']))
-	throw new \Exception('Options should be an array');
-if (!array_key_exists('map',$buf)) throw new \Exception('No symbol table');
-if (!is_array($this->slots=$buf['map']))
-	throw new \Exception('Slot table should contain an array');
-$this->symbols=array();
-//echo '<p>Unserialize time: '.((microtime(true)-$start)*1000);//TRACE
+if (!is_null($_bp)) $GLOBALS['__bp']=$_bp;
+$a = require($this->path);
+if (!is_null($_bp)) unset($GLOBALS['__bp']);
 
-//-- Compute base path
-
-if (!is_null($_bp)) $this->basePath=$_bp;
-else $this->basePath=self::combinePath(dirname($this->path)
-	,$this->option('basePath'),true);
+$this->options=$a['options'];
+$this->symbols=$a['map'];
+$this->basePath=$a['info']['abs_bp'];
+//echo '<p>map read time: '.((microtime(true)-$start)*1000);//TRACE
 
 //echo '<p>__construct time: '.((microtime(true)-$start_time)*1000);//TRACE
 }
@@ -189,11 +162,25 @@ catch (\Exception $e)
 }
 
 //---------
+//-- Get map file header
+
+private static function getMapHeader($path)
+{
+if (($fp=fopen($path,'rb'))===false)
+	throw new \Exception('Cannot open map file');
+if (($buf=fread($fp,80))===false)
+	throw new \Exception('Cannot read map header');
+fclose($fp);
+return $buf;
+}
+
+//---------
 // Check if a given file is a map file
 
-public function isMapFile($path)
+public static function isMapFile($path)
 {
-return (substr(file_get_contents($path),0,strlen(self::MAGIC))===self::MAGIC);
+$buf=self::getMapHeader($path);
+return (substr($buf,9,14)===self::MAGIC);
 }
 
 //---------
@@ -212,21 +199,7 @@ return (substr(file_get_contents($path),0,strlen(self::MAGIC))===self::MAGIC);
 
 public static function key($type,$name)
 {
-return $type.trim($name,'\\');
-}
-
-//---------
-/**
-* Load a slot into the symbol table
-*
-* @param string $ns Normalized namespace. Must correspond to an existing slot (no check)
-* @return null
-*/
-
-private function loadSlot($ns)
-{
-$this->symbols=array_merge($this->symbols,unserialize($this->slots[$ns]));
-unset($this->slots[$ns]);
+return trim($name,'\\').$type;
 }
 
 //---------
@@ -270,26 +243,25 @@ return (isset($this->options[$opt]) ? $this->options[$opt] : null);
 
 public function symbolCount()
 {
-return $this->symcount;
+return count($this->symbols);
 }
 
 //---
 // The entry we are exporting must be in the symbol table (no check)
-// We need to use combinePath() because the registered path (rpath) can be absolute
 
 private function exportEntry($key)
 {
 $entry=$this->symbols[$key];
 
 $a=array(
-	'stype'		=> $key{0},
-	'symbol' 	=> substr($key,1),
-	'ptype'		=> $entry{0},
-	'rpath'		=> substr($entry,1)
+	'stype'		=> substr($key,-1),
+	'symbol' 	=> substr($key,0,-1),
+	'ptype'		=> substr($entry,-1),
+	'path'		=> $apath=substr($entry,0,-1)
 	);
 
-$a['path']=(($a['ptype']===Mgr::F_EXTENSION) ? $a['rpath']
-	: self::combinePath($this->basePath,$a['rpath']));
+$a['rpath']=(strpos($apath,$this->basePath)===0)
+	? substr($apath,strlen($this->basePath)) : $apath;
 
 return $a;
 }
@@ -299,35 +271,15 @@ return $a;
 public function getTarget($type,$symbol)
 {
 $key=self::key($type,$symbol);
-$found=false;
-if (isset($this->symbols[$key])) $found=true;
-else {
-	if (count($this->slots)) {
-		$ns=self::nsKey($symbol);
-		if (isset($this->slots[$ns])) {
-			$this->loadSlot($ns);
-			if (isset($this->symbols[$key])) $found=true;
-		}
-	}
-}
-if (! $found) return false;
-
-$elt=&$this->symbols[$key];
-$ptype=$elt{0};
-$apath=substr($elt,1);
-if ($ptype!==Mgr::F_EXTENSION) {
-	$apath = self::combinePath($this->basePath,$apath); // Absolute path
-}
-
-return array($ptype, $apath);
+return ((isset($this->symbols[$key])) ? $this->symbols[$key] : false);
 }
 
 //---
 
 public function getSymbol($type,$symbol)
 {
-if ($this->getTarget($type,$symbol)===false) return false;
-return $this->exportEntry(self::key($type,$symbol));
+return (($this->getTarget($type,$symbol)===false)
+	? false: $this->exportEntry(self::key($type,$symbol)));
 }
 
 //-------
@@ -349,7 +301,8 @@ if (($target=$this->getTarget($type,$name))===false) return false;
 
 //-- Found
 
-list($ptype, $path) = $target;
+$ptype=substr($target,-1);
+$path=substr($target,0,-1);
 switch($ptype)
 	{
 	case Mgr::F_EXTENSION:
@@ -385,11 +338,7 @@ return true;
 
 public function symbols()
 {
-/* First, load every remaining slot */
-
-foreach(array_keys($this->slots) as $ns) $this->loadSlot($ns);
-
-/* Then, convert every entry to the export format */
+/* Convert every entry to the export format */
 
 $ret=array();
 foreach(array_keys($this->symbols) as $key) $ret[]=$this->exportEntry($key);
@@ -425,6 +374,8 @@ foreach($this->symbols() as $s)
 	{
 	fwrite($fp,$s['stype'].'|'.$s['symbol'].'|'.$s['ptype'].'|'.$s['rpath']."\n");
 	}
+
+//TODO: Export/import options
 
 fclose($fp);
 }

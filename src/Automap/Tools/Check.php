@@ -48,17 +48,17 @@ public static function check($map)
 {
 $checked_targets=array();
 $errors=array();
-foreach($map->symbols() as $s)
-	{
-	try
-		{
+
+//echo "---- Step 1: Checking paths\n";
+
+foreach($map->symbols() as $s) {
+	try {
 		$path=$s['path'];
 		$ptype=$s['ptype'];
 		$key=$ptype.$path;
 		if (isset($checked_targets[$key])) continue;
 		$checked_targets[$key]=true;
-		switch($ptype)
-			{
+		switch($ptype) {
 			case \Automap\Mgr::F_EXTENSION:
 				// Do nothing
 				break;
@@ -86,14 +86,24 @@ foreach($map->symbols() as $s)
 
 			default:
 				throw new \Exception("<$ptype>: Unknown target type");
-			}
 		}
-	catch (\Exception $e)
-		{
+	} catch (\Exception $e) {
 		$errors[]=\Automap\Mgr::typeToString($s['stype']).' '.$s['symbol']
 			.': '.$e->getMessage();
-		}
 	}
+}
+
+//echo "---- Step 2: Loading symbols\n";
+
+$id=0;
+foreach($map->symbols() as $s) {
+	if (\Automap\Mgr::symbolIsDefined($s['stype'],$s['symbol'])) continue;
+	if (! $map->resolve($s['stype'],$s['symbol'],$id)) {
+		$errors[]=\Automap\Mgr::typeToString($s['stype']).' '.$s['symbol']
+			.': Cannot resolve symbol';
+	}
+}
+
 return $errors;
 }
 

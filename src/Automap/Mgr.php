@@ -356,7 +356,7 @@ return false;
 
 //-------- Symbol resolution -----------
 
-private static function symbolIsDefined($type,$name)
+public static function symbolIsDefined($type,$name)
 {
 switch($type)
 	{
@@ -412,7 +412,7 @@ self::resolve($type,$name,true,false);
 * @throw \Exception
 */
 
-private static function resolve($type,$name, $autoloading=false, $exception=false)
+public static function resolve($type,$name, $autoloading=false, $exception=false)
 {
 	//$ts=microtime(true);//TRACE
 	//echo "Resolving $type$name\n";//TRACE

@@ -134,8 +134,6 @@ $t->check('Directive no-auto-index works',!$found_c16);
 $t->check('Directive ignore works',!$found_c_excl);
 $t->check('Directive declare works',$found_func1);
 
-$t->check('check() returns no error',count($map1->check())===0);
-
 $t->check('getSymbol() returns false on non existing symbol',$map1->getSymbol(\Automap\Mgr::T_CLASS,'nosuchclass')===false);
 
 //---------------------------------
