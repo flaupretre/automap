@@ -64,7 +64,7 @@ clean_distrib:
 
 #--- Sync subtrees - Dev private
 
-SYNC = rsync -av --del --exclude external --delete-excluded
+SYNC = rsync -av --del --exclude external --exclude .git --delete-excluded
 
 sync: sync_phool
 
