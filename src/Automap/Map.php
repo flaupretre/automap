@@ -104,6 +104,7 @@ private $basePath;
 
 public function __construct($path,$flags=0,$_bp=null)
 {
+//$start_time=microtime(true);//TRACE
 $this->path=self::mkAbsolutePath($path);
 $this->flags=$flags;
 
@@ -115,6 +116,7 @@ if (($buf=@file_get_contents($this->path))===false)
 	throw new \Exception('Cannot read map file');
 $bufsize=strlen($buf);
 if ($bufsize<70) throw new \Exception("Short file (size=$bufsize)");
+//echo '<p>Map file read time: '.((microtime(true)-$start_time)*1000);//TRACE
 
 //-- Check magic
 
@@ -143,7 +145,7 @@ if (strlen($buf)!=($sz=(int)substr($buf,38,8)))
 
 //-- Check CRC
 
-if (!($flags & Mgr::CRC_CHECK))
+if ($flags & Mgr::CRC_CHECK)
 	{
 	$crc=substr($buf,46,8);
 	$buf=substr_replace($buf,'00000000',46,8);
@@ -156,6 +158,7 @@ $this->symcount=(int)substr($buf,54,8);
 
 //-- Read data
 
+//$start=microtime(true);//TRACE
 $dsize=(int)substr($buf,62,8);
 if (($buf=unserialize(substr($buf,70,$dsize)))===false)
 	throw new \Exception('Cannot unserialize data from map file');
@@ -168,6 +171,7 @@ if (!array_key_exists('map',$buf)) throw new \Exception('No symbol table');
 if (!is_array($this->slots=$buf['map']))
 	throw new \Exception('Slot table should contain an array');
 $this->symbols=array();
+//echo '<p>Unserialize time: '.((microtime(true)-$start)*1000);//TRACE
 
 //-- Compute base path
 
@@ -175,6 +179,7 @@ if (!is_null($_bp)) $this->basePath=$_bp;
 else $this->basePath=self::combinePath(dirname($this->path)
 	,$this->option('basePath'),true);
 
+//echo '<p>__construct time: '.((microtime(true)-$start_time)*1000);//TRACE
 }
 catch (\Exception $e)
 	{
@@ -291,19 +296,38 @@ return $a;
 
 //---
 
-public function getSymbol($type,$symbol)
+public function getTarget($type,$symbol)
 {
 $key=self::key($type,$symbol);
-if (!($found=array_key_exists($key,$this->symbols)))
-	{
-	if (count($this->slots))
-		{
+$found=false;
+if (isset($this->symbols[$key])) $found=true;
+else {
+	if (count($this->slots)) {
 		$ns=self::nsKey($symbol);
-		if (array_key_exists($ns,$this->slots)) $this->loadSlot($ns);
-		$found=array_key_exists($key,$this->symbols);
+		if (isset($this->slots[$ns])) {
+			$this->loadSlot($ns);
+			if (isset($this->symbols[$key])) $found=true;
 		}
 	}
-return ($found ? $this->exportEntry($key) : false);
+}
+if (! $found) return false;
+
+$elt=&$this->symbols[$key];
+$ptype=$elt{0};
+$apath=substr($elt,1);
+if ($ptype!==Mgr::F_EXTENSION) {
+	$apath = self::combinePath($this->basePath,$apath); // Absolute path
+}
+
+return array($ptype, $apath);
+}
+
+//---
+
+public function getSymbol($type,$symbol)
+{
+if ($this->getTarget($type,$symbol)===false) return false;
+return $this->exportEntry(self::key($type,$symbol));
 }
 
 //-------
@@ -316,18 +340,17 @@ return ($found ? $this->exportEntry($key) : false);
 * @param string $type One of the \Automap\Mgr::T_xxx symbol types
 * @param string Symbol name including namespace (no leading '\')
 * @param integer $id Used to return the ID of the map where the symbol was found
-* @return exported entry if found, false if not found
+* @return true if found, false if not found
 */
 
 public function resolve($type,$name,&$id)
 {
-if (($this->flags & Mgr::NO_AUTOLOAD)
-		|| (($entry=$this->getSymbol($type,$name))===false)) return false;
+if (($target=$this->getTarget($type,$name))===false) return false;
 
 //-- Found
 
-$path=$entry['path']; // Absolute path
-switch($entry['ptype'])
+list($ptype, $path) = $target;
+switch($ptype)
 	{
 	case Mgr::F_EXTENSION:
 		if (!dl($path)) return false;
@@ -353,9 +376,9 @@ switch($entry['ptype'])
 		break;
 
 	default:
-		throw new \Exception('<'.$entry['ptype'].'>: Unknown target type');
+		throw new \Exception("<$ptype>: Unknown target type");
 	}
-return $entry;
+return true;
 }
 
 //---

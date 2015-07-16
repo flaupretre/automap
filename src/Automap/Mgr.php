@@ -40,6 +40,7 @@ namespace Automap {
 
 if (!class_exists('Automap\Mgr',false)) 
 {
+
 class Mgr
 {
 /** Symbol types */
@@ -308,11 +309,19 @@ return array_keys(self::$maps);
 
 public static function load($path,$flags=0,$_bp=null)
 {
+//------ Executed only if outside of a package
+// <Prolog:ignore>
+// <PHK:ignore>
+if (!class_exists('Automap\Map',1)) require __DIR__.'/Map.php';
+// <PHK:end>
+// </Prolog:ignore>
+//--------------
+
 $map=new \Automap\Map($path,$flags,$_bp);
 
 $id=self::$load_index++;
 self::$maps[$id]=$map;
-// \Phool\Display::info("Loaded $path as ID $id");//TRACE
+//echo "Loaded $path as ID $id";//TRACE
 return $id;
 }
 
@@ -335,7 +344,7 @@ public static function unload($id)
 self::validate($id);
 
 unset(self::$maps[$id]);
-// \Phool\Display::info("Unloaded ID $id");//TRACE
+//echo "Unloaded ID $id";//TRACE
 }
 
 //---------------------------------
@@ -403,57 +412,63 @@ self::resolve($type,$name,true,false);
 * @throw \Exception
 */
 
-private static function resolve($type,$name,$autoloading=false
-	,$exception=false)
+private static function resolve($type,$name, $autoloading=false, $exception=false)
 {
-//echo "Resolving $type$name\n";//TRACE
+	//$ts=microtime(true);//TRACE
+	//echo "Resolving $type$name\n";//TRACE
 
-if ((!$autoloading)&&(self::symbolIsDefined($type,$name))) return true;
+	if ((!$autoloading)&&(self::symbolIsDefined($type,$name))) return true;
 
-foreach(array_reverse(self::$maps,true) as $id => $map)
-	{
-	if (($entry=$map->resolve($type,$name,$id))===false) continue;
-	//echo "Symbol $name was resolved from ID $id\n";
-	self::callSuccessHandlers($entry,$id);
-	return true;
+	foreach(array_reverse(self::$maps,true) as $id => $map)
+		{
+		if (($autoloading && ($map->flags() & self::NO_AUTOLOAD))
+			|| (! $map->resolve($type,$name,$id))) continue;
+		//echo "Symbol $name was resolved from ID $id\n";//TRACE
+		if (count(self::$successHandlers)) {
+			self::callSuccessHandlers($map->getSymbol($type,$name),$id);
+		}
+		//echo "<p>resolve($name): ".((microtime(true)-$ts)*1000)."</p>";//TRACE
+		return true;
+		}
+
+	// Failure
+
+	if (count(self::$failureHandlers)) {
+		self::callFailureHandlers($type,$name);
 	}
-
-// Failure
-
-self::callFailureHandlers($type,$name);
-if ($exception) throw new \Exception('Automap: Unknown '
-	.self::typeToString($type).': '.$name);
-return false;
+	if ($exception) throw new \Exception('Automap: Unknown '
+		.self::typeToString($type).': '.$name);
+	return false;
 }
 
 //---------
 // Methods for explicit resolutions
 
-public static function getFunction($name)
-	{ return self::resolve(self::T_FUNCTION,$name,false,false); }
+public static function getFunction($name,$autoloading=false)
+	{ return self::resolve(self::T_FUNCTION,$name,$autoloading,false); }
 
-public static function getConstant($name)
-	{ return self::resolve(self::T_CONSTANT,$name,false,false); }
+public static function getConstant($name,$autoloading=false)
+	{ return self::resolve(self::T_CONSTANT,$name,$autoloading,false); }
 
-public static function getClass($name)
-	{ return self::resolve(self::T_CLASS,$name,false,false); }
+public static function getClass($name,$autoloading=false)
+	{ return self::resolve(self::T_CLASS,$name,$autoloading,false); }
 
-public static function getExtension($name)
-	{ return self::resolve(self::T_EXTENSION,$name,false,false); }
+public static function getExtension($name,$autoloading=false)
+	{ return self::resolve(self::T_EXTENSION,$name,$autoloading,false); }
 
 //---------
 
-public static function requireFunction($name)
-	{ return self::resolve(self::T_FUNCTION,$name,false,true); }
+public static function requireFunction($name,$autoloading=false)
+	{ return self::resolve(self::T_FUNCTION,$name,$autoloading,true); }
 
-public static function requireConstant($name)
-	{ return self::resolve(self::T_CONSTANT,$name,false,true); }
+public static function requireConstant($name,$autoloading=false)
+	{ return self::resolve(self::T_CONSTANT,$name,$autoloading,true); }
 
-public static function requireClass($name)
-	{ return self::resolve(self::T_CLASS,$name,false,true); }
+public static function requireClass($name,$autoloading=false)
+	{ return self::resolve(self::T_CLASS,$name,$autoloading,true); }
 
-public static function requireExtension($name)
-	{ return self::resolve(self::T_EXTENSION,$name,false,true); }
+public static function requireExtension($name,$autoloading=false)
+	{ return self::resolve(self::T_EXTENSION,$name,$autoloading,true); }
 
 //---
 } // End of class
@@ -472,6 +487,16 @@ if (!defined('_AUTOMAP_DISABLE_REGISTER'))
 Mgr::init();
 
 //---
+} else { // if class_exists(Automap\Mgr)
+// If runtime is used outside of a PHK package, extension needs
+// the Automap\Map class to load maps.
+//------ Executed only if outside of a package
+// <Prolog:ignore>
+// <PHK:ignore>
+if (extension_loaded('phk')) Mgr::setMapClassPath(__DIR__.'/Map.php');
+// <PHK:end>
+// </Prolog:ignore>
+//--------------
 } // End of class_exists
 //===========================================================================
 } // End of namespace
