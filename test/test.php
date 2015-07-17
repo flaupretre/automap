@@ -22,13 +22,13 @@ $t->check('include() returns NULL',is_string($res));
 //---------------------------------
 $t->start('Load maps');
 
-$id1=\Automap\Mgr::load(MAP1);
+$id1=\Automap\Mgr::load(MAP1,\Automap\Mgr::CRC_CHECK);
 $t->check('load() returns int (1)',is_int($id1));
 
 $map1=\Automap\Mgr::map($id1);
 $t->check('map object is instance of \Automap\Map (1)',($map1 instanceof \Automap\Map));
 
-$id2=\Automap\Mgr::load(MAP2);
+$id2=\Automap\Mgr::load(MAP2,\Automap\Mgr::CRC_CHECK);
 $t->check('load() returns int (2)',is_int($id2));
 
 $map2=\Automap\Mgr::map($id2);
