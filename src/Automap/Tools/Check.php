@@ -44,8 +44,9 @@ class Check // Static only
 //---
 // Returns an array of error messages
 
-public static function check($map)
+public static function check($id)
 {
+$map=\Automap\Mgr::map($id);
 $checked_targets=array();
 $errors=array();
 

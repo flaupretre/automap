@@ -120,8 +120,8 @@ switch($action)
 		break;
 
 	case 'check':
-		$map=new \Automap\Map($op->option('map_path'));
-		$errs=$map->check($id);
+		$id=\Automap\Mgr::load($op->option('map_path'),\Automap\Mgr::CRC_CHECK);
+		$errs=\Automap\Tools\Check::check($id);
 		if (count($errs))
 			{
 			foreach($errs as $err) \Phool\Display::error($err);
