@@ -34,8 +34,8 @@
 
 namespace Automap\CLI {
 
-if (!class_exists('Automap\CLI\Cmd',false)) 
-{
+if (!class_exists('Automap\CLI\Cmd',false)) {
+
 class Cmd
 {
 //---------
@@ -50,7 +50,7 @@ throw new \Exception($msg);
 
 private static function usage()
 {
-echo "
+	echo "
 Available commands :
 
   - register [-a] [-b <base_path>] <relative paths...>
@@ -108,97 +108,94 @@ More information at http://automap.tekwire.net\n\n";
 
 public static function run($args)
 {
-$op=new Options;
-$op->parseAll($args);
-$action=(count($args)) ? array_shift($args) : 'help';
+	$op=new Options;
+	$op->parseAll($args);
+	$action=(count($args)) ? array_shift($args) : 'help';
 
-switch($action)
-	{
-	case 'show':
-		$map=new \Automap\Map($op->option('map_path'));
-		$map->show($op->option('format'));
-		break;
+	switch($action) {
+		case 'show':
+			$map=new \Automap\Map($op->option('map_path'));
+			$map->show($op->option('format'));
+			break;
 
-	case 'check':
-		$map=new \Automap\Map($op->option('map_path'));
-		$errs=$map->check($id);
-		if (count($errs))
-			{
-			foreach($errs as $err) \Phool\Display::error($err);
-			throw new \Exception("*** The check procedure found errors in file $mapfile");
+		case 'check':
+			$id=\Automap\Mgr::load($op->option('map_path'),\Automap\Mgr::CRC_CHECK);
+			$errs=\Automap\Tools\Check::check($id);
+			if (count($errs)) {
+				foreach($errs as $err) \Phool\Display::error($err);
+				throw new \Exception("*** The check procedure found errors in file $mapfile");
 			}
-		\Phool\Display::info('Check OK');
-		break;
+			\Phool\Display::info('Check OK');
+			break;
 
-	case 'setOption':
-		if (count($args)!=2) self::errorAbort('setOption requires 2 arguments');
-		list($name,$value)=$args;
-		$map=new \Automap\Build\Creator();
-		$map->readMapFile($op->option('map_path'));
-		$map->setOption($name,$value);
-		$map->save($op->option('map_path'));
-		break;
-
-	case 'unsetOption':
-		if (count($args)!=1) self::errorAbort('unsetOption requires 1 argument');
-		$name=array_shift($args);
-		$map=new \Automap\Build\Creator();
-		$map->readMapFile($op->option('map_path'));
-		$map->unsetOption($name);
-		$map->save($op->option('map_path'));
-		break;
-
-	case 'register_extensions':
-		//-- Must be executed with :
-		//-- php -n -d <Extension_dir> automap.phk register_extensions
-		//-- in order to ignore extension preloading directives in php.ini
-		//-- (if an extension is already loaded, we cannot determine which file
-		//-- it came from). The '-d' flag is mandatory as long as PHP cannot
-		//-- dl() outside of 'extension_dir'.
-
-		$map=new \Automap\Build\Creator();
-		if (($op->option('append')) && is_file($op->option('map_path')))
+		case 'setOption':
+			if (count($args)!=2) self::errorAbort('setOption requires 2 arguments');
+			list($name,$value)=$args;
+			$map=new \Automap\Build\Creator();
 			$map->readMapFile($op->option('map_path'));
-		$map->registerExtensionDir();
-		$map->save($op->option('map_path'));
-		break;
+			$map->setOption($name,$value);
+			$map->save($op->option('map_path'));
+			break;
 
-	case 'register':
-		$map=new \Automap\Build\Creator();
-		if (($op->option('append')) && is_file($op->option('map_path')))
+		case 'unsetOption':
+			if (count($args)!=1) self::errorAbort('unsetOption requires 1 argument');
+			$name=array_shift($args);
+			$map=new \Automap\Build\Creator();
 			$map->readMapFile($op->option('map_path'));
-		$abs_map_dir=\Phool\File::mkAbsolutePath(dirname($op->option('map_path')));
-		if (!is_null($op->option('base_path')))
-			$map->setOption('base_path',$op->option('base_path'));
-		$abs_base=\Phool\File::combinePath($abs_map_dir,$map->option('base_path'));
-		foreach($args as $rpath)
-			{
-			$abs_path=\Phool\File::combinePath($abs_base,$rpath);
-			$map->registerPath($abs_path,$rpath);
+			$map->unsetOption($name);
+			$map->save($op->option('map_path'));
+			break;
+
+		case 'register_extensions':
+			//-- Must be executed with :
+			//-- php -n -d <Extension_dir> automap.phk register_extensions
+			//-- in order to ignore extension preloading directives in php.ini
+			//-- (if an extension is already loaded, we cannot determine which file
+			//-- it came from). The '-d' flag is mandatory as long as PHP cannot
+			//-- dl() outside of 'extension_dir'.
+
+			$map=new \Automap\Build\Creator();
+			if (($op->option('append')) && is_file($op->option('map_path')))
+				$map->readMapFile($op->option('map_path'));
+			$map->registerExtensionDir();
+			$map->save($op->option('map_path'));
+			break;
+
+		case 'register':
+			$map=new \Automap\Build\Creator();
+			if (($op->option('append')) && is_file($op->option('map_path')))
+				$map->readMapFile($op->option('map_path'));
+			$abs_map_dir=\Phool\File::mkAbsolutePath(dirname($op->option('map_path')));
+			if (!is_null($op->option('base_path')))
+				$map->setOption('base_path',$op->option('base_path'));
+			$abs_base=\Phool\File::combinePath($abs_map_dir,$map->option('base_path'));
+			foreach($args as $rpath) {
+				$abs_path=\Phool\File::combinePath($abs_base,$rpath);
+				$map->registerPath($abs_path,$rpath);
 			}
-		$map->save($op->option('map_path'));
-		break;
+			$map->save($op->option('map_path'));
+			break;
 
-	case 'export':
-		$map=new \Automap\Map($op->option('map_path'));
-		$map->export($op->option('output'));
-		break;
+		case 'export':
+			$map=new \Automap\Map($op->option('map_path'));
+			$map->export($op->option('output'));
+			break;
 
-	case 'import':
-		$map=new \Automap\Build\Creator();
-		if (($op->option('append')) && is_file($op->option('map_path')))
-			$map->readMapFile($op->option('map_path'));
-		$map->import($op->option('input'));
-		$map->save($op->option('map_path'));
-		break;
+		case 'import':
+			$map=new \Automap\Build\Creator();
+			if (($op->option('append')) && is_file($op->option('map_path')))
+				$map->readMapFile($op->option('map_path'));
+			$map->import($op->option('input'));
+			$map->save($op->option('map_path'));
+			break;
 
-	case 'help':
-		self::usage();
-		break;
+		case 'help':
+			self::usage();
+			break;
 
-	default:
-		self::errorAbort("Unknown action: '$action'");
-	}
+		default:
+			self::errorAbort("Unknown action: '$action'");
+		}
 }
 
 //---

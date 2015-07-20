@@ -38,42 +38,42 @@
 
 namespace Automap {
 
-if (!class_exists('Automap\Mgr',false)) 
-{
+if (!class_exists('Automap\Mgr', false)) {
+
 class Mgr
 {
 /** Symbol types */
 
-const T_FUNCTION='F';
-const T_CONSTANT='C';
-const T_CLASS='L';
-const T_EXTENSION='E';
+const T_FUNCTION  = 'F';
+const T_CONSTANT  = 'C';
+const T_CLASS     = 'L';
+const T_EXTENSION = 'E';
 
 /** Target types */
 
-const F_SCRIPT='S';
-const F_EXTENSION='X';
-const F_PACKAGE='P';
+const F_SCRIPT    = 'S';
+const F_EXTENSION = 'X';
+const F_PACKAGE   = 'P';
 
 /* Load flags */
 
 /** Autoloader ignores maps loaded with this flag */
 
-const NO_AUTOLOAD=1;
+const NO_AUTOLOAD = 1;
 
 /** Check CRC */
 
-const CRC_CHECK=2;
+const CRC_CHECK = 2;
 
 /** Load is done by the PECL extension - Reserved for internal use */
 
-const PECL_LOAD=4;
+const PECL_LOAD = 4;
 
 /** @var array Fixed value array containing a readable string for each
 *              symbol/target type
 */
 
-private static $type_strings=array(
+private static $type_strings = array(
 	self::T_FUNCTION	=> 'function',
 	self::T_CONSTANT	=> 'constant',
 	self::T_CLASS		=> 'class',
@@ -85,11 +85,11 @@ private static $type_strings=array(
 
 /** @var array(callables) Registered failure handlers */
 
-private static $failureHandlers=array();
+private static $failureHandlers = array();
 
 /** @var array(callables) Registered success handlers */
 
-private static $successHandlers=array();
+private static $successHandlers = array();
 
 /** @var bool Whether the PHP engine is able to autoload constants */
 
@@ -101,11 +101,11 @@ private static $supportFunctionAutoload; //
 
 /** @var array(<map ID> => <\Automap\Map>) Array of active maps */
 
-private static $maps=array();
+private static $maps = array();
 
 /** @var integer The map ID of the next map load */
 
-private static $load_index=1;
+private static $load_index = 1;
 
 //================== Map manager (static methods) =======================
 
@@ -116,13 +116,13 @@ private static $load_index=1;
 
 public static function init()
 {
-// Determines if function/constant autoloading is supported
+	// Determines if function/constant autoloading is supported
 
-$f=new \ReflectionFunction('function_exists');
-self::$supportFunctionAutoload=($f->getNumberOfParameters()==2);
+	$f = new \ReflectionFunction('function_exists');
+	self::$supportFunctionAutoload = ($f->getNumberOfParameters()==2);
 
-$f=new \ReflectionFunction('defined');
-self::$supportConstantAutoload=($f->getNumberOfParameters()==2);
+	$f = new \ReflectionFunction('defined');
+	self::$supportConstantAutoload = ($f->getNumberOfParameters()==2);
 }
 
 //=============== User handlers ===============
@@ -143,7 +143,7 @@ self::$supportConstantAutoload=($f->getNumberOfParameters()==2);
 
 public static function registerFailureHandler($callable)
 {
-self::$failureHandlers[]=$callable;
+	self::$failureHandlers[] = $callable;
 }
 
 //--------------
@@ -160,9 +160,9 @@ self::$failureHandlers[]=$callable;
 * @return null
 */
 
-private static function callFailureHandlers($type,$name)
+private static function callFailureHandlers($type, $name)
 {
-foreach (self::$failureHandlers as $callable) $callable($type,$name);
+	foreach (self::$failureHandlers as $callable) $callable($type, $name);
 }
 
 //--------------
@@ -185,15 +185,16 @@ foreach (self::$failureHandlers as $callable) $callable($type,$name);
 
 public static function registerSuccessHandler($callable)
 {
-self::$successHandlers[]=$callable;
+	self::$successHandlers[] = $callable;
 }
 
 //---
 
-private static function callSuccessHandlers($entry,$id)
+private static function callSuccessHandlers($entry, $id)
 {
-foreach (self::$successHandlers as $callable)
-	$callable($entry,$id);
+	foreach (self::$successHandlers as $callable) {
+		$callable($entry, $id);
+	}
 }
 
 //-------- Key management -----------
@@ -210,30 +211,31 @@ foreach (self::$successHandlers as $callable)
 * @return string Symbol key
 */
 
-public static function key($type,$name)
+public static function key($type, $name)
 {
-return $type.trim($name,'\\');
+	return $type.trim($name, '\\');
 }
 
 //---------
 
 public static function typeToString($type)
 {
-if (!isset(self::$type_strings[$type]))
-	throw new \Exception("$type: Invalid type");
+	if (!isset(self::$type_strings[$type])) {
+		throw new \Exception("$type: Invalid type");
+	}
 
-return self::$type_strings[$type];
+	return self::$type_strings[$type];
 }
 
 //---------
 
 public static function stringToType($string)
 {
-$type=array_search($string,self::$type_strings,true);
-
-if ($type===false) throw new \Exception("$type: Invalid type");
-
-return $type;
+	$type = array_search($string, self::$type_strings, true);
+	if ($type===false) {
+		throw new \Exception("$type: Invalid type");
+	}
+	return $type;
 }
 
 //-------- Map loading/unloading -----------
@@ -247,7 +249,7 @@ return $type;
 
 public static function isActiveID($id)
 {
-return isset(self::$maps[$id]);
+	return isset(self::$maps[$id]);
 }
 
 //-----
@@ -263,9 +265,11 @@ return isset(self::$maps[$id]);
 
 private static function validate($id)
 {
-if (!self::isActiveID($id)) throw new \Exception($id.': Invalid map ID');
+	if (!self::isActiveID($id)) {
+		throw new \Exception($id.': Invalid map ID');
+	}
 
-return $id;
+	return $id;
 }
 
 //-----
@@ -279,9 +283,9 @@ return $id;
 
 public static function map($id)
 {
-self::validate($id);
+	self::validate($id);
 
-return self::$maps[$id];
+	return self::$maps[$id];
 }
 
 //-----
@@ -293,7 +297,7 @@ return self::$maps[$id];
 
 public static function activeIDs()
 {
-return array_keys(self::$maps);
+	return array_keys(self::$maps);
 }
 
 //---------
@@ -306,19 +310,27 @@ return array_keys(self::$maps);
 * @return int the map ID
 */
 
-public static function load($path,$flags=0,$_bp=null)
+public static function load($path, $flags=0, $_bp=null)
 {
-$map=new \Automap\Map($path,$flags,$_bp);
+	//------ Executed only if outside of a package
+// <Prolog:ignore>
+// <PHK:ignore>
+	if (!class_exists('Automap\Map', 1)) require __DIR__.'/Map.php';
+// <PHK:end>
+// </Prolog:ignore>
+	//--------------
 
-$id=self::$load_index++;
-self::$maps[$id]=$map;
-// \Phool\Display::info("Loaded $path as ID $id");//TRACE
-return $id;
+	$map = new \Automap\Map($path, $flags, $_bp);
+
+	$id = self::$load_index++;
+	self::$maps[$id] = $map;
+	//echo "Loaded $path as ID $id";//TRACE
+	return $id;
 }
 
 //---------------------------------
 /**
-* Unloads a map
+* Unload a map
 *
 * We dont use __destruct because :
 *	1. We don't want this to be called on script shutdown
@@ -332,36 +344,39 @@ return $id;
 
 public static function unload($id)
 {
-self::validate($id);
+	self::validate($id);
 
-unset(self::$maps[$id]);
-// \Phool\Display::info("Unloaded ID $id");//TRACE
+	unset(self::$maps[$id]);
+	//echo "Unloaded ID $id";//TRACE
 }
 
 //---------------------------------
 
 public static function usingAccelerator()
 {
-return false;
+	return false;
 }
 
 //-------- Symbol resolution -----------
 
-private static function symbolIsDefined($type,$name)
+public static function symbolIsDefined($type, $name)
 {
-switch($type)
-	{
-	case self::T_CONSTANT:	return (self::$supportConstantAutoload ?
-		defined($name,false) : defined($name));
+	switch($type) {
+		case self::T_CONSTANT:
+			return (self::$supportConstantAutoload ?
+				defined($name, false) : defined($name));
 
-	case self::T_FUNCTION:	return (self::$supportFunctionAutoload ?
-		function_exists($name,false) : function_exists($name));
+		case self::T_FUNCTION:
+			return (self::$supportFunctionAutoload ?
+				function_exists($name, false) : function_exists($name));
 
-	case self::T_CLASS:		return class_exists($name,false)
-								|| interface_exists($name,false)
-								|| (function_exists('trait_exists') && trait_exists($name,false));
+		case self::T_CLASS:
+			return class_exists($name, false)
+				|| interface_exists($name, false)
+				|| (function_exists('trait_exists') && trait_exists($name, false));
 
-	case self::T_EXTENSION:	return extension_loaded($name);
+		case self::T_EXTENSION:
+			return extension_loaded($name);
 	}
 }
 
@@ -377,9 +392,9 @@ switch($type)
 *   autoloading.
 */
 
-public static function autoloadHook($name,$type=self::T_CLASS)
+public static function autoloadHook($name, $type=self::T_CLASS)
 {
-self::resolve($type,$name,true,false);
+	self::resolve($type, $name, true, false);
 }
 
 //---------
@@ -403,57 +418,68 @@ self::resolve($type,$name,true,false);
 * @throw \Exception
 */
 
-private static function resolve($type,$name,$autoloading=false
-	,$exception=false)
+public static function resolve($type, $name, $autoloading=false, $exception=false)
 {
-//echo "Resolving $type$name\n";//TRACE
+	//$ts = microtime(true);//TRACE
+	//echo "Resolving $type$name\n";//TRACE
 
-if ((!$autoloading)&&(self::symbolIsDefined($type,$name))) return true;
-
-foreach(array_reverse(self::$maps,true) as $id => $map)
-	{
-	if (($entry=$map->resolve($type,$name,$id))===false) continue;
-	//echo "Symbol $name was resolved from ID $id\n";
-	self::callSuccessHandlers($entry,$id);
-	return true;
+	if ((!$autoloading)&&(self::symbolIsDefined($type, $name))) {
+		return true;
 	}
 
-// Failure
+	foreach(array_reverse(self::$maps, true) as $id => $map) {
+		if (($autoloading && ($map->flags() & self::NO_AUTOLOAD))
+			|| (! $map->resolve($type, $name, $id))) {
+			continue;
+			}
+		//echo "Symbol $name was resolved from ID $id\n";//TRACE
+		if (count(self::$successHandlers)) {
+			self::callSuccessHandlers($map->getSymbol($type, $name), $id);
+		}
+		//echo "<p>resolve($name): ".((microtime(true)-$ts)*1000)."</p>";//TRACE
+		return true;
+		}
 
-self::callFailureHandlers($type,$name);
-if ($exception) throw new \Exception('Automap: Unknown '
-	.self::typeToString($type).': '.$name);
-return false;
+	// Failure
+
+	if (count(self::$failureHandlers)) {
+		self::callFailureHandlers($type, $name);
+	}
+	if ($exception) {
+		throw new \Exception('Automap: Unknown '.self::typeToString($type).': '.$name);
+	}
+	
+	return false;
 }
 
 //---------
 // Methods for explicit resolutions
 
-public static function getFunction($name)
-	{ return self::resolve(self::T_FUNCTION,$name,false,false); }
+public static function getFunction($name, $autoloading=false)
+	{ return self::resolve(self::T_FUNCTION, $name, $autoloading, false); }
 
-public static function getConstant($name)
-	{ return self::resolve(self::T_CONSTANT,$name,false,false); }
+public static function getConstant($name, $autoloading=false)
+	{ return self::resolve(self::T_CONSTANT, $name, $autoloading, false); }
 
-public static function getClass($name)
-	{ return self::resolve(self::T_CLASS,$name,false,false); }
+public static function getClass($name, $autoloading=false)
+	{ return self::resolve(self::T_CLASS, $name, $autoloading, false); }
 
-public static function getExtension($name)
-	{ return self::resolve(self::T_EXTENSION,$name,false,false); }
+public static function getExtension($name, $autoloading=false)
+	{ return self::resolve(self::T_EXTENSION, $name, $autoloading, false); }
 
 //---------
 
-public static function requireFunction($name)
-	{ return self::resolve(self::T_FUNCTION,$name,false,true); }
+public static function requireFunction($name, $autoloading=false)
+	{ return self::resolve(self::T_FUNCTION, $name, $autoloading, true); }
 
-public static function requireConstant($name)
-	{ return self::resolve(self::T_CONSTANT,$name,false,true); }
+public static function requireConstant($name, $autoloading=false)
+	{ return self::resolve(self::T_CONSTANT, $name, $autoloading, true); }
 
-public static function requireClass($name)
-	{ return self::resolve(self::T_CLASS,$name,false,true); }
+public static function requireClass($name, $autoloading=false)
+	{ return self::resolve(self::T_CLASS, $name, $autoloading, true); }
 
-public static function requireExtension($name)
-	{ return self::resolve(self::T_EXTENSION,$name,false,true); }
+public static function requireExtension($name, $autoloading=false)
+	{ return self::resolve(self::T_EXTENSION, $name, $autoloading, true); }
 
 //---
 } // End of class
@@ -461,17 +487,26 @@ public static function requireExtension($name)
 
 // Registers the automap callback (append)
 
-if (!defined('_AUTOMAP_DISABLE_REGISTER'))
-	{
-	if (!extension_loaded('spl'))
+if (!defined('_AUTOMAP_DISABLE_REGISTER')) {
+	if (!extension_loaded('spl')) {
 		throw new \Exception("Automap requires the SPL extension");
-
-	spl_autoload_register('\Automap\Mgr::autoloadHook');
 	}
+	spl_autoload_register('\Automap\Mgr::autoloadHook');
+}
 
 Mgr::init();
 
 //---
+} else { // if class_exists(Automap\Mgr)
+	// If runtime is used outside of a PHK package, extension needs
+	// the Automap\Map class to load maps.
+	//------ Executed only if outside of a package
+// <Prolog:ignore>
+// <PHK:ignore>
+	if (extension_loaded('phk')) Mgr::setMapClassPath(__DIR__.'/Map.php');
+// <PHK:end>
+// </Prolog:ignore>
+	//--------------
 } // End of class_exists
 //===========================================================================
 } // End of namespace

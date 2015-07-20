@@ -36,65 +36,76 @@
 
 namespace Automap\Tools {
 
-if (!class_exists('Automap\Tools\Check',false)) 
-{
+if (!class_exists('Automap\Tools\Check',false)) {
+
 class Check // Static only
 {
 
 //---
 // Returns an array of error messages
 
-public static function check($map)
+public static function check($id)
 {
-$checked_targets=array();
-$errors=array();
-foreach($map->symbols() as $s)
-	{
-	try
-		{
-		$path=$s['path'];
-		$ptype=$s['ptype'];
-		$key=$ptype.$path;
-		if (isset($checked_targets[$key])) continue;
-		$checked_targets[$key]=true;
-		switch($ptype)
-			{
-			case \Automap\Mgr::F_EXTENSION:
-				// Do nothing
-				break;
+	$map=\Automap\Mgr::map($id);
+	$checked_targets=array();
+	$errors=array();
 
-			case \Automap\Mgr::F_SCRIPT:
-				//echo "Checking script at $path\n";
-				if (!is_file($path)) throw new \Exception($path.': File not found');
-				if (\PHK::fileIsPackage($path))
-					throw new \Exception($path.': File is a PHK package (should be a script)');
-				break;
+	//echo "---- Step 1: Checking paths\n";
 
-			case \Automap\Mgr::F_PACKAGE:
-				//echo "Checking package at $path\n";
-				if (!is_file($path)) throw new \Exception($path.': File not found');
-				if (!\PHK::fileIsPackage($path))
-					throw new \Exception($path.': File is not a PHK package');
+	foreach($map->symbols() as $s) {
+		try {
+			$path=$s['path'];
+			$ptype=$s['ptype'];
+			$key=$ptype.$path;
+			if (isset($checked_targets[$key])) continue;
+			$checked_targets[$key]=true;
+			switch($ptype) {
+				case \Automap\Mgr::F_EXTENSION:
+					// Do nothing
+					break;
 
-				// Suppress notice msg on multiple HALT_COMPILER definitions
-				error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
-				$phk_id=\PHK\Mgr::mount($path,\PHK::F_NO_MOUNT_SCRIPT);
-				error_reporting($errlevel);
-				$pkg=\PHK\Mgr::instance($phk_id);
-				self::check(\Automap\Mgr::map($pkg->automap_id()));
-				break;
+				case \Automap\Mgr::F_SCRIPT:
+					//echo "Checking script at $path\n";
+					if (!is_file($path)) throw new \Exception($path.': File not found');
+					if (\PHK::fileIsPackage($path))
+						throw new \Exception($path.': File is a PHK package (should be a script)');
+					break;
 
-			default:
-				throw new \Exception("<$ptype>: Unknown target type");
+				case \Automap\Mgr::F_PACKAGE:
+					//echo "Checking package at $path\n";
+					if (!is_file($path)) throw new \Exception($path.': File not found');
+					if (!\PHK::fileIsPackage($path))
+						throw new \Exception($path.': File is not a PHK package');
+
+					// Suppress notice msg on multiple HALT_COMPILER definitions
+					error_reporting(($errlevel=error_reporting()) & ~E_NOTICE);
+					$phk_id=\PHK\Mgr::mount($path,\PHK::F_NO_MOUNT_SCRIPT);
+					error_reporting($errlevel);
+					$pkg=\PHK\Mgr::instance($phk_id);
+					self::check(\Automap\Mgr::map($pkg->automap_id()));
+					break;
+
+				default:
+					throw new \Exception("<$ptype>: Unknown target type");
 			}
-		}
-	catch (\Exception $e)
-		{
-		$errors[]=\Automap\Mgr::typeToString($s['stype']).' '.$s['symbol']
-			.': '.$e->getMessage();
+		} catch (\Exception $e) {
+			$errors[]=\Automap\Mgr::typeToString($s['stype']).' '.$s['symbol']
+				.': '.$e->getMessage();
 		}
 	}
-return $errors;
+
+	//echo "---- Step 2: Loading symbols\n";
+
+	$id=0;
+	foreach($map->symbols() as $s) {
+		if (\Automap\Mgr::symbolIsDefined($s['stype'],$s['symbol'])) continue;
+		if (! $map->resolve($s['stype'],$s['symbol'],$id)) {
+			$errors[]=\Automap\Mgr::typeToString($s['stype']).' '.$s['symbol']
+				.': Cannot resolve symbol';
+		}
+	}
+
+	return $errors;
 }
 
 //---

@@ -35,8 +35,8 @@
 
 namespace Automap\Build {
 
-if (!interface_exists('Automap\Build\ParserInterface',false)) 
-{
+if (!interface_exists('Automap\Build\ParserInterface',false)) {
+
 interface ParserInterface
 {
 //---------------------------------

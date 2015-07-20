@@ -22,13 +22,13 @@ $t->check('include() returns NULL',is_string($res));
 //---------------------------------
 $t->start('Load maps');
 
-$id1=\Automap\Mgr::load(MAP1);
+$id1=\Automap\Mgr::load(MAP1,\Automap\Mgr::CRC_CHECK);
 $t->check('load() returns int (1)',is_int($id1));
 
 $map1=\Automap\Mgr::map($id1);
 $t->check('map object is instance of \Automap\Map (1)',($map1 instanceof \Automap\Map));
 
-$id2=\Automap\Mgr::load(MAP2);
+$id2=\Automap\Mgr::load(MAP2,\Automap\Mgr::CRC_CHECK);
 $t->check('load() returns int (2)',is_int($id2));
 
 $map2=\Automap\Mgr::map($id2);
@@ -133,8 +133,6 @@ foreach ($syms as $sym)
 $t->check('Directive no-auto-index works',!$found_c16);
 $t->check('Directive ignore works',!$found_c_excl);
 $t->check('Directive declare works',$found_func1);
-
-$t->check('check() returns no error',count($map1->check())===0);
 
 $t->check('getSymbol() returns false on non existing symbol',$map1->getSymbol(\Automap\Mgr::T_CLASS,'nosuchclass')===false);
 
