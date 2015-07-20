@@ -86,31 +86,29 @@ private $exclude_list;
 
 public function __construct()
 {
-$this->symbols=array();
-$this->exclude_list=array();
+	$this->symbols=array();
+	$this->exclude_list=array();
 }
 
 //---------------------------------
 
 private function cleanup()
 {
-// Filter out excluded symbols
-if (count($this->exclude_list))
-	{
-	foreach(array_keys($this->symbols) as $n)
-		{
-		$s=$this->symbols[$n];
-		$key=\Automap\Map::key($s['type'],$s['name']);
-		if (array_search($key,$this->exclude_list)!==false)
-			unset($this->symbols[$n]);
+	// Filter out excluded symbols
+	if (count($this->exclude_list)) {
+		foreach(array_keys($this->symbols) as $n) {
+			$s=$this->symbols[$n];
+			$key=\Automap\Map::key($s['type'],$s['name']);
+			if (array_search($key,$this->exclude_list)!==false)
+				unset($this->symbols[$n]);
 		}
 	}
 
-$a=$this->symbols;
-$this->symbols=array();
-$this->exclude_list=array();
+	$a=$this->symbols;
+	$this->symbols=array();
+	$this->exclude_list=array();
 
-return $a;
+	return $a;
 }
 
 //---------------------------------
@@ -124,7 +122,7 @@ return $a;
 
 private function exclude($type,$name)
 {
-$this->exclude_list[]=\Automap\Map::key($type,$name);
+	$this->exclude_list[]=\Automap\Map::key($type,$name);
 }
 
 //---------------------------------
@@ -140,7 +138,7 @@ $this->exclude_list[]=\Automap\Map::key($type,$name);
 
 private function addSymbol($type,$name)
 {
-$this->symbols[]=array('type' => $type, 'name' => $name);
+	$this->symbols[]=array('type' => $type, 'name' => $name);
 }
 
 //---------------------------------
@@ -154,39 +152,37 @@ $this->symbols[]=array('type' => $type, 'name' => $name);
 
 public function parseExtension($file)
 {
-$extension_list=get_loaded_extensions();
+	$extension_list=get_loaded_extensions();
 
-@dl($file);
-$a=array_diff(get_loaded_extensions(),$extension_list);
-if (($ext_name=array_pop($a))===NULL)
-	throw new \Exception($file.': Cannot load extension');
+	@dl($file);
+	$a=array_diff(get_loaded_extensions(),$extension_list);
+	if (($ext_name=array_pop($a))===NULL)
+		throw new \Exception($file.': Cannot load extension');
 
-$this->addSymbol(\Automap\Mgr::T_EXTENSION,$ext_name);
+	$this->addSymbol(\Automap\Mgr::T_EXTENSION,$ext_name);
 
-$ext=new \ReflectionExtension($ext_name);
+	$ext=new \ReflectionExtension($ext_name);
 
-foreach($ext->getFunctions() as $func)
-	$this->addSymbol(\Automap\Mgr::T_FUNCTION,$func->getName());
+	foreach($ext->getFunctions() as $func)
+		$this->addSymbol(\Automap\Mgr::T_FUNCTION,$func->getName());
 
-foreach(array_keys($ext->getConstants()) as $constant)
-	$this->addSymbol(\Automap\Mgr::T_CONSTANT,$constant);
+	foreach(array_keys($ext->getConstants()) as $constant)
+		$this->addSymbol(\Automap\Mgr::T_CONSTANT,$constant);
 
-foreach($ext->getClasses() as $class)
-	$this->addSymbol(\Automap\Mgr::T_CLASS,$class->getName());
-	
-if (method_exists($ext,'getInterfaces')) // Compatibility
-	{
-	foreach($ext->getInterfaces() as $interface)
-		$this->addSymbol(\Automap\Mgr::T_CLASS,$interface->getName());
+	foreach($ext->getClasses() as $class)
+		$this->addSymbol(\Automap\Mgr::T_CLASS,$class->getName());
+		
+	if (method_exists($ext,'getInterfaces')) { // Compatibility
+		foreach($ext->getInterfaces() as $interface)
+			$this->addSymbol(\Automap\Mgr::T_CLASS,$interface->getName());
 	}
 
-if (method_exists($ext,'getTraits')) // Compatibility
-	{
-	foreach($ext->getTraits() as $trait)
-		$this->addSymbol(\Automap\Mgr::T_CLASS,$trait->getName());
+	if (method_exists($ext,'getTraits')) { // Compatibility
+		foreach($ext->getTraits() as $trait)
+			$this->addSymbol(\Automap\Mgr::T_CLASS,$trait->getName());
 	}
 
-return $this->cleanup();
+	return $this->cleanup();
 }
 
 //---------------------------------
@@ -204,8 +200,8 @@ return $this->cleanup();
 
 private static function combineNSSymbol($ns,$symbol)
 {
-$ns=trim($ns,'\\');
-return $ns.(($ns==='') ? '' : '\\').$symbol;
+	$ns=trim($ns,'\\');
+	return $ns.(($ns==='') ? '' : '\\').$symbol;
 }
 
 //---------------------------------
@@ -225,40 +221,37 @@ return $ns.(($ns==='') ? '' : '\\').$symbol;
 
 private function parseAutomapDirectives($buf,&$skip_blocks)
 {
-$ret=true;
-$a=null;
-if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0)
-	{
-	foreach($a as $match)
-		{
-		switch ($cmd=$match[1])
-			{
-			case 'ignore-file':
-				$ret=false;
+	$ret=true;
+	$a=null;
+	if (preg_match_all('{^//\s+\<Automap\>:(\S+)(.*)$}m',$buf,$a,PREG_SET_ORDER)!=0) {
+		foreach($a as $match) {
+			switch ($cmd=$match[1]) {
+				case 'ignore-file':
+					$ret=false;
 
-			case 'skip-blocks':
-				$skip_blocks=true;
-				break;
+				case 'skip-blocks':
+					$skip_blocks=true;
+					break;
 
-			case 'declare':
-			case 'ignore':
-				$type_string=strtolower(strtok($match[2],' '));
-				$name=strtok(' ');
-				if ($type_string===false || $name===false)
-					throw new \Exception($cmd.': Directive needs 2 args');
-				$type=\Automap\Mgr::stringToType($type_string);
-				if ($cmd=='declare')
-					$this->addSymbol($type,$name);
-				else
-					$this->exclude($type,$name);
-				break;
+				case 'declare':
+				case 'ignore':
+					$type_string=strtolower(strtok($match[2],' '));
+					$name=strtok(' ');
+					if ($type_string===false || $name===false)
+						throw new \Exception($cmd.': Directive needs 2 args');
+					$type=\Automap\Mgr::stringToType($type_string);
+					if ($cmd=='declare')
+						$this->addSymbol($type,$name);
+					else
+						$this->exclude($type,$name);
+					break;
 
-			default:
-				throw new \Exception($cmd.': Invalid Automap directive');
+				default:
+					throw new \Exception($cmd.': Invalid Automap directive');
 			}
 		}
 	}
-return $ret;
+	return $ret;
 }
 
 //---------------------------------
@@ -272,18 +265,17 @@ return $ret;
 
 public function parseScriptFile($path)
 {
-try
-	{
-	// Don't run PECL accelerated read for virtual files
-	$buf=((function_exists('\Automap\Ext\file_get_contents')
-		&& (strpos($path,'://')===false)) ? 
-		\Automap\Ext\file_get_contents($path)
-		: file_get_contents($path));
-	$ret=$this->parseScript($buf);
-	return $ret;
+	try {
+		// Don't run PECL accelerated read for virtual files
+		$buf=((function_exists('\Automap\Ext\file_get_contents')
+			&& (strpos($path,'://')===false)) ? 
+			\Automap\Ext\file_get_contents($path)
+			: file_get_contents($path));
+		$ret=$this->parseScript($buf);
+		return $ret;
+	} catch (\Exception $e) {
+		throw new \Exception("$path: ".$e->getMessage());
 	}
-catch (\Exception $e)
-	{ throw new \Exception("$path: ".$e->getMessage()); }
 }
 
 //---------------------------------
@@ -297,25 +289,22 @@ catch (\Exception $e)
 
 public function parseScript($buf)
 {
-$buf=str_replace("\r",'',$buf);
+	$buf=str_replace("\r",'',$buf);
 
-$skip_blocks=false;
+	$skip_blocks=false;
 
-if ($this->parseAutomapDirectives($buf,$skip_blocks))
-	{
-	if (function_exists('\Automap\Ext\parseTokens')) 
-		{ // If PECL function is available
-		$a=\Automap\Ext\parseTokens($buf,$skip_blocks);
-		//var_dump($a);//TRACE
-		foreach($a as $k) $this->addSymbol($k{0},substr($k,1));
-		}
-	else
-		{
-		$this->parseTokens($buf,$skip_blocks);
+	if ($this->parseAutomapDirectives($buf,$skip_blocks)) {
+		if (function_exists('\Automap\Ext\parseTokens')) {
+			// If PECL function is available
+			$a=\Automap\Ext\parseTokens($buf,$skip_blocks);
+			//var_dump($a);//TRACE
+			foreach($a as $k) $this->addSymbol($k{0},substr($k,1));
+		} else {
+			$this->parseTokens($buf,$skip_blocks);
 		}
 	}
 
-return $this->cleanup();
+	return $this->cleanup();
 }
 
 //---------------------------------
@@ -325,169 +314,164 @@ return $this->cleanup();
 
 private function parseTokens($buf,$skip_blocks)
 {
-$block_level=0;
-$state=self::ST_OUT;
-$name='';
-$ns='';
+	$block_level=0;
+	$state=self::ST_OUT;
+	$name='';
+	$ns='';
 
-// Note: Using php_strip_whitespace() before token_get_all does not improve
-// performance.
+	// Note: Using php_strip_whitespace() before token_get_all does not improve
+	// performance.
 
-foreach(token_get_all($buf) as $token)
-	{
-	if (is_string($token))
-		{
-		$tvalue=$token;
-		$tnum=-1;
-		$tname='String';
+	foreach(token_get_all($buf) as $token) {
+		if (is_string($token)) {
+			$tvalue=$token;
+			$tnum=-1;
+			$tname='String';
+		} else {
+			list($tnum,$tvalue)=$token;
+			$tname=token_name($tnum);
 		}
-	else
-		{
-		list($tnum,$tvalue)=$token;
-		$tname=token_name($tnum);
-		}
-		
-	if (($tnum==T_COMMENT)||($tnum==T_DOC_COMMENT)) continue;
-	if (($tnum==T_WHITESPACE)&&($state!=self::ST_NAMESPACE_FOUND)) continue;
+			
+		if (($tnum==T_COMMENT)||($tnum==T_DOC_COMMENT)) continue;
+		if (($tnum==T_WHITESPACE)&&($state!=self::ST_NAMESPACE_FOUND)) continue;
 
-	//echo "$tname <$tvalue>\n";//TRACE
-	switch($state)
-		{
-		case self::ST_OUT:
-			switch($tnum)
-				{
-				case T_FUNCTION:
-					$state=self::ST_FUNCTION_FOUND;
-					break;
-				case T_CLASS:
-				case T_INTERFACE:
-				case T_TRAIT:
-					$state=self::ST_CLASS_FOUND;
-					break;
-				case T_NAMESPACE:
-					$state=self::ST_NAMESPACE_FOUND;
-					$name='';
-					break;
-				case T_CONST:
-					$state=self::ST_CONST_FOUND;
-					break;
-				case T_STRING:
-					if ($tvalue=='define') $state=self::ST_DEFINE_FOUND;
-					$name='';
-					break;
-				// If this flag is set, we skip anything enclosed
-				// between {} chars, ignoring any conditional block.
-				case -1:
-					if ($tvalue=='{' && $skip_blocks)
-						{
-						$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-						$block_level=1;
+		//echo "$tname <$tvalue>\n";//TRACE
+		switch($state) {
+			case self::ST_OUT:
+				switch($tnum)
+					{
+					case T_FUNCTION:
+						$state=self::ST_FUNCTION_FOUND;
+						break;
+					case T_CLASS:
+					case T_INTERFACE:
+					case T_TRAIT:
+						$state=self::ST_CLASS_FOUND;
+						break;
+					case T_NAMESPACE:
+						$state=self::ST_NAMESPACE_FOUND;
+						$name='';
+						break;
+					case T_CONST:
+						$state=self::ST_CONST_FOUND;
+						break;
+					case T_STRING:
+						if ($tvalue=='define') $state=self::ST_DEFINE_FOUND;
+						$name='';
+						break;
+					// If this flag is set, we skip anything enclosed
+					// between {} chars, ignoring any conditional block.
+					case -1:
+						if ($tvalue=='{' && $skip_blocks) {
+							$state=self::ST_SKIPPING_BLOCK_NOSTRING;
+							$block_level=1;
 						}
-					break;
+						break;
 				}
-			break;
+				break;
 
-		case self::ST_NAMESPACE_FOUND:
-			$state=($tnum==T_WHITESPACE) ? self::ST_NAMESPACE_2 : self::ST_OUT;
-			break;
-			
-		case self::ST_NAMESPACE_2:
-			switch($tnum)
-				{
-				case T_STRING:
-					$name .=$tvalue;
-					break;
-				case T_NS_SEPARATOR:
-					$name .= '\\';
-					break;
-				default:
-					$ns=$name;
+			case self::ST_NAMESPACE_FOUND:
+				$state=($tnum==T_WHITESPACE) ? self::ST_NAMESPACE_2 : self::ST_OUT;
+				break;
+				
+			case self::ST_NAMESPACE_2:
+				switch($tnum) {
+					case T_STRING:
+						$name .=$tvalue;
+						break;
+					case T_NS_SEPARATOR:
+						$name .= '\\';
+						break;
+					default:
+						$ns=$name;
+						$state=self::ST_OUT;
+				}
+				break;
+				
+
+			case self::ST_FUNCTION_FOUND:
+				if (($tnum==-1)&&($tvalue=='(')) {
+					// Closure : Ignore (no function name to get here)
 					$state=self::ST_OUT;
+					break;
 				}
-			break;
-			
+				 //-- Function returning ref: keep looking for name
+				 if ($tnum==-1 && $tvalue=='&') break;
+				// No break here !
+			case self::ST_CLASS_FOUND:
+				if ($tnum==T_STRING) {
+					$this->addSymbol($state,self::combineNSSymbol($ns,$tvalue));
+				} else {
+					throw new \Exception('Unrecognized token for class/function definition'
+						."(type=$tnum ($tname);value='$tvalue'). String expected");
+				}
+				$state=self::ST_SKIPPING_BLOCK_NOSTRING;
+				$block_level=0;
+				break;
 
-		case self::ST_FUNCTION_FOUND:
-			if (($tnum==-1)&&($tvalue=='('))
-				{ // Closure : Ignore (no function name to get here)
+			case self::ST_CONST_FOUND:
+				if ($tnum==T_STRING) {
+					$this->addSymbol(\Automap\Mgr::T_CONSTANT,self::combineNSSymbol($ns,$tvalue));
+				}
+				else {
+					throw new \Exception('Unrecognized token for constant definition'
+						."(type=$tnum ($tname);value='$tvalue'). String expected");
+				}
 				$state=self::ST_OUT;
 				break;
-				}
-			 //-- Function returning ref: keep looking for name
-			 if ($tnum==-1 && $tvalue=='&') break;
-			// No break here !
-		case self::ST_CLASS_FOUND:
-			if ($tnum==T_STRING)
-				{
-				$this->addSymbol($state,self::combineNSSymbol($ns,$tvalue));
-				}
-			else throw new \Exception('Unrecognized token for class/function definition'
-				."(type=$tnum ($tname);value='$tvalue'). String expected");
-			$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-			$block_level=0;
-			break;
 
-		case self::ST_CONST_FOUND:
-			if ($tnum==T_STRING)
-				{
-				$this->addSymbol(\Automap\Mgr::T_CONSTANT,self::combineNSSymbol($ns,$tvalue));
-				}
-			else throw new \Exception('Unrecognized token for constant definition'
-				."(type=$tnum ($tname);value='$tvalue'). String expected");
-			$state=self::ST_OUT;
-			break;
+			case self::ST_SKIPPING_BLOCK_STRING:
+				if ($tnum==-1 && $tvalue=='"')
+					$state=self::ST_SKIPPING_BLOCK_NOSTRING;
+				break;
 
-		case self::ST_SKIPPING_BLOCK_STRING:
-			if ($tnum==-1 && $tvalue=='"')
-				$state=self::ST_SKIPPING_BLOCK_NOSTRING;
-			break;
-
-		case self::ST_SKIPPING_BLOCK_NOSTRING:
-			if ($tnum==-1 || $tnum==T_CURLY_OPEN)
-				{
-				switch($tvalue)
-					{
-					case '"':
-						$state=self::ST_SKIPPING_BLOCK_STRING;
-						break;
-					case '{':
-						$block_level++;
-						//TRACE echo "block_level=$block_level\n";
-						break;
-					case '}':
-						$block_level--;
-						if ($block_level==0) $state=self::ST_OUT;
-						//TRACE echo "block_level=$block_level\n";
-						break;
+			case self::ST_SKIPPING_BLOCK_NOSTRING:
+				if ($tnum==-1 || $tnum==T_CURLY_OPEN) {
+					switch($tvalue) {
+						case '"':
+							$state=self::ST_SKIPPING_BLOCK_STRING;
+							break;
+						case '{':
+							$block_level++;
+							//TRACE echo "block_level=$block_level\n";
+							break;
+						case '}':
+							$block_level--;
+							if ($block_level==0) $state=self::ST_OUT;
+							//TRACE echo "block_level=$block_level\n";
+							break;
 					}
 				}
-			break;
+				break;
 
-		case self::ST_DEFINE_FOUND:
-			if ($tnum==-1 && $tvalue=='(') $state=self::ST_DEFINE_2;
-			else throw new \Exception('Unrecognized token for constant definition'
-				."(type=$tnum ($tname);value='$tvalue'). Expected '('");
-			break;
-
-		case self::ST_DEFINE_2:
-			// Remember: T_STRING is incorrect in 'define' as constant name.
-			// Current namespace is ignored in 'define' statement.
-			if ($tnum==T_CONSTANT_ENCAPSED_STRING)
-				{
-				$schar=$tvalue{0};
-				if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
-				$this->addSymbol(\Automap\Mgr::T_CONSTANT,$tvalue);
+			case self::ST_DEFINE_FOUND:
+				if ($tnum==-1 && $tvalue=='(') {
+					$state=self::ST_DEFINE_2;
+				} else {
+					throw new \Exception('Unrecognized token for constant definition'
+						."(type=$tnum ($tname);value='$tvalue'). Expected '('");
 				}
-			else throw new \Exception('Unrecognized token for constant definition'
-				."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant");
-			$state=self::ST_SKIPPING_TO_EOL;
-			break;
+				break;
 
-		case self::ST_SKIPPING_TO_EOL:
-			if ($tnum==-1 && $tvalue==';') $state=self::ST_OUT;
-			break;
+			case self::ST_DEFINE_2:
+				// Remember: T_STRING is incorrect in 'define' as constant name.
+				// Current namespace is ignored in 'define' statement.
+				if ($tnum==T_CONSTANT_ENCAPSED_STRING) {
+					$schar=$tvalue{0};
+					if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
+					$this->addSymbol(\Automap\Mgr::T_CONSTANT,$tvalue);
+				} else {
+					throw new \Exception('Unrecognized token for constant definition'
+						."(type=$tnum ($tname);value='$tvalue'). Expected quoted string constant");
+				}
+				$state=self::ST_SKIPPING_TO_EOL;
+				break;
+
+			case self::ST_SKIPPING_TO_EOL:
+				if ($tnum==-1 && $tvalue==';') $state=self::ST_OUT;
+				break;
+			}
 		}
-	}
 }
 
 //---

@@ -38,8 +38,7 @@
 
 namespace Automap {
 
-if (!class_exists('Automap\Mgr', false)) 
-{
+if (!class_exists('Automap\Mgr', false)) {
 
 class Mgr
 {

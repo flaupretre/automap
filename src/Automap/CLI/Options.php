@@ -34,8 +34,8 @@
 
 namespace Automap\CLI {
 
-if (!class_exists('Automap\CLI\Options',false)) 
-{
+if (!class_exists('Automap\CLI\Options',false)) {
+
 class Options extends \Phool\Options\Base
 {
 
@@ -63,45 +63,42 @@ protected $options=array(
 	'format' => 'auto'
 	);
 
-
-
 //-----------------------
 
 protected function processOption($opt,$arg)
 {
-switch($opt)
-	{
-	case 'v':
-		\Phool\Display::incVerbose();
-		break;
+	switch($opt) {
+		case 'v':
+			\Phool\Display::incVerbose();
+			break;
 
-	case 'q':
-		\Phool\Display::decVerbose();
-		break;
+		case 'q':
+			\Phool\Display::decVerbose();
+			break;
 
-	case 'm':
-		$this->options['map_path']=$arg;
-		break;
+		case 'm':
+			$this->options['map_path']=$arg;
+			break;
 
-	case 'b':
-		$this->options['base_path']=$arg;
-		break;
+		case 'b':
+			$this->options['base_path']=$arg;
+			break;
 
-	case 'a':
-		$this->options['append']=true;
-		break;
+		case 'a':
+			$this->options['append']=true;
+			break;
 
-	case 'o':
-		$this->options['output']=$arg;
-		break;
+		case 'o':
+			$this->options['output']=$arg;
+			break;
 
-	case 'i':
-		$this->options['input']=$arg;
-		break;
+		case 'i':
+			$this->options['input']=$arg;
+			break;
 
-	case 'f':
-		$this->options['format']=$arg;
-		break;
+		case 'f':
+			$this->options['format']=$arg;
+			break;
 	}
 }
 
