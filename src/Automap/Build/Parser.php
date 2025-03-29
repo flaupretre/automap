@@ -298,7 +298,7 @@ public function parseScript($buf)
 			// If PECL function is available
 			$a=\Automap\Ext\parseTokens($buf,$skip_blocks);
 			//var_dump($a);//TRACE
-			foreach($a as $k) $this->addSymbol($k{0},substr($k,1));
+    foreach($a as $k) $this->addSymbol($k[0],substr($k,1));
 		} else {
 			$this->parseTokens($buf,$skip_blocks);
 		}
@@ -457,7 +457,7 @@ private function parseTokens($buf,$skip_blocks)
 				// Remember: T_STRING is incorrect in 'define' as constant name.
 				// Current namespace is ignored in 'define' statement.
 				if ($tnum==T_CONSTANT_ENCAPSED_STRING) {
-					$schar=$tvalue{0};
+					$schar=$tvalue[0];
 					if ($schar=="'" || $schar=='"') $tvalue=trim($tvalue,$schar);
 					$this->addSymbol(\Automap\Mgr::T_CONSTANT,$tvalue);
 				} else {
