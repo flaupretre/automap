@@ -376,6 +376,7 @@ private function parseTokens($buf,$skip_blocks)
 				
 			case self::ST_NAMESPACE_2:
 				switch($tnum) {
+					case T_NAME_QUALIFIED:
 					case T_STRING:
 						$name .=$tvalue;
 						break;
